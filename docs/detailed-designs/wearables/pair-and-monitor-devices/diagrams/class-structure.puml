@@ -1,0 +1,55 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Pair and monitor devices
+
+enum DeviceConnectionState {
+  Disconnected
+  Pairing
+  Connected
+}
+
+class WearableDevice {
+  +string id
+  +string label
+  +string sensorRole
+  +number batteryPercent
+  +number liveHeartRateBpm
+  +DeviceConnectionState state
+}
+
+class DeviceToast {
+  +string severity
+  +string title
+  +string message
+  +string actionLabel
+}
+
+class WebBluetoothAdapter {
+  +isAdapterAvailable(): Promise<boolean>
+  +requestAndConnect(deviceId: string): Promise<void>
+  +disconnect(deviceId: string): Promise<void>
+}
+
+class BluetoothDeviceStore {
+  +Signal<WearableDevice[]> devices
+  +Signal<DeviceToast | null> activeToast
+  +Signal<boolean> adapterUnavailable
+  +pairDevice(deviceId: string, label: string): Promise<boolean>
+  +disconnect(deviceId: string): Promise<void>
+  +reconnect(deviceId: string): Promise<void>
+}
+
+BluetoothDeviceStore --> WebBluetoothAdapter : delegates GATT to
+BluetoothDeviceStore --> "*" WearableDevice : tracks
+BluetoothDeviceStore ..> DeviceToast : emits
+WearableDevice --> DeviceConnectionState : has
+@enduml

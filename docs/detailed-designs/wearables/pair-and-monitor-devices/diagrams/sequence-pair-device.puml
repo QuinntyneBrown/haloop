@@ -1,0 +1,57 @@
+@startuml
+title UML sequence behaviour — Pair Bluetooth sensor and emit lifecycle toasts
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "PairDeviceDialogComponent" as dialog
+  participant "DeviceToastComponent" as toast
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "BluetoothDeviceStore" as store
+end box
+box "Backend — Browser Hardware and Storage" #FFF4E5
+  participant "WebBluetoothAdapter" as bt
+  database "IndexedDB (haloop-db)" as idb
+end box
+
+actor -> dialog : Select nearby sensor, enter label, click Pair sensor (L2-029)
+alt Label blank or no sensor selected
+  dialog --> actor : Render inline validation error (L2-019, L2-028)
+else Valid label
+  dialog -> store : pairDevice(deviceId, escapedLabel)
+  store --> toast : Emit info toast "Scanning for Bluetooth sensors" (L2-020)
+  dialog --> actor : Enter busy pairing state (L2-019)
+  store -> bt : requestAndConnect(deviceId) (local GATT, L2-027)
+  alt Pairing timeout
+    bt --> store : TimeoutError
+    store --> dialog : Failed state ("Pairing timed out") (L2-019)
+    dialog --> actor : Display proximity guidance and retry control
+  else GATT connected
+    bt --> store : Connected + live HR/battery stream
+    store -> idb : Persist WearableDevice label
+    store --> dialog : Close dialog
+    store --> toast : Emit success toast "<Device> connected" (L2-020)
+    opt Battery level <= 15%
+      bt -> store : Battery notification (<= 15%)
+      store --> toast : Emit warning toast "<Device> battery low" (L2-020)
+    end
+    opt Unexpected signal loss
+      bt -> store : gattserverdisconnected event
+      store --> toast : Emit danger toast "<Device> disconnected" with Reconnect (L2-020)
+    end
+  end
+end
+@enduml

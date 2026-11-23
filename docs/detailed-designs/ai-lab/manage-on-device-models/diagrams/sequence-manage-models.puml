@@ -1,0 +1,69 @@
+@startuml
+title UML sequence behaviour — Download and remove an open model
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "AiLabPageComponent" as page
+  participant "RemoveModelDialogComponent" as rm_dlg
+  participant "ModelToastRegionComponent" as toast
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "ModelRegistryStore" as store
+end box
+box "Backend — On-Device Model Worker" #D1FADF
+  participant "Model Cache Worker" as worker
+end box
+box "Backend — Storage and External Hub" #FFF4E5
+  database "Cache Storage / OPFS" as opfs
+  participant "Hugging Face Hub" as hf
+end box
+
+actor -> page : Click Download on Qwen2.5-0.5B-Instruct (480 MB) (L2-027)
+page -> store : download("qwen-fallback")
+alt cachedMb + 480 > budgetMb
+  store --> toast : Emit warning toast about cache budget (L2-031)
+else Within budget
+  store -> worker : downloadModel(repoId) (non-blocking, L2-030)
+  worker -> hf : Fetch ONNX artifacts (HTTPS)
+  loop Stream byte progress
+    hf --> worker : Artifact chunks
+    worker --> store : downloadedMb (e.g. 212 / 480 MB) (L2-022)
+    store --> page : Update row progress bar
+  end
+  worker -> opfs : Commit cached model files
+  opfs --> worker : Cached OK
+  worker --> store : Ready
+  store --> page : Update budget progress bar
+  store --> toast : Emit success toast (L2-023)
+end
+
+actor -> page : Click Remove on cached model
+page -> rm_dlg : Open confirmation dialog (Cancel focused, L2-023)
+actor -> rm_dlg : Confirm Remove <N> MB
+rm_dlg -> store : remove(modelId) (busy state)
+store -> worker : removeModel(repoId)
+worker -> opfs : Delete cached artifacts
+alt Deletion fails or OPFS blocked
+  opfs --> worker : StorageError
+  worker --> store : Failed (L2-026)
+  store --> rm_dlg : Render failed error state (L2-023)
+else Deletion succeeds
+  opfs --> worker : Freed MB
+  worker --> store : Removed
+  store --> rm_dlg : Close dialog
+  store --> toast : Emit success model toast (L2-023)
+end
+@enduml

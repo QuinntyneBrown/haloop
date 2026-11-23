@@ -1,0 +1,90 @@
+@import './styles/tokens.css';
+@import './styles/ui.css';
+
+/* Left rail shall never vertically scroll and stays pinned to the viewport */
+@media (min-width: 64rem) {
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-sidebar__nav {
+    margin-top: clamp(var(--space-4), 3vh, var(--space-10));
+    overflow: hidden;
+  }
+
+  .app-sidebar__footer {
+    margin-top: auto;
+  }
+}
+
+/* Iteration 1: Unwrap Angular routed component host inside .app-content so direct children
+   inherit .app-content's exact 48px (desktop) / 40px (mobile) vertical flex gap. */
+.app-content > router-outlet + * {
+  display: contents;
+}
+
+/* Iteration 2 & 4: Prevent mobile horizontal overflow inside Train camera HUD and action clusters */
+.camera-stage__hud {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.camera-stage__pill {
+  max-width: 100%;
+}
+
+/* Iteration 5, 7, 11, 14, 15: Responsive dialog panel scroll & viewport clearance */
+.dialog__panel {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+/* Iteration 6, 8, 10, 13, 17, 18: Prevent flex cluster overflow on < 576px mobile viewports */
+.cluster {
+  flex-wrap: wrap;
+}
+
+/* Iteration 12 & 16: Keep toast-region clear of fixed .phone-tabs on mobile (< 64rem) */
+@media (max-width: 63.99rem) {
+  .toast-region {
+    bottom: calc(4.5rem + var(--space-3));
+  }
+}
+
+/* Iteration 20: System status banner responsive padding & wrap alignment */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface-sunken);
+  color: var(--color-fg-default);
+}
+
+@media (min-width: 64rem) {
+  .banner {
+    padding: var(--space-3) var(--space-6);
+  }
+}
+
+.banner--info { background: var(--palette-blue-50); color: var(--palette-blue-900); border-bottom-color: var(--palette-blue-200); }
+.banner--success { background: var(--palette-green-50); color: var(--palette-green-900); border-bottom-color: var(--palette-green-100); }
+.banner--warning { background: var(--palette-amber-50); color: var(--palette-amber-900); border-bottom-color: var(--palette-amber-100); }
+.banner--danger { background: var(--palette-red-50); color: var(--palette-red-900); border-bottom-color: var(--palette-red-100); }
+.banner--persistent { background: var(--palette-halo-50); color: var(--palette-halo-900); border-bottom-color: var(--palette-halo-200); }
+
+html[data-theme='dark'] .banner--info { background: var(--palette-blue-950); color: var(--palette-blue-100); border-bottom-color: var(--palette-blue-800); }
+html[data-theme='dark'] .banner--success { background: var(--palette-green-950); color: var(--palette-green-100); border-bottom-color: var(--palette-green-900); }
+html[data-theme='dark'] .banner--warning { background: var(--palette-amber-950); color: var(--palette-amber-100); border-bottom-color: var(--palette-amber-900); }
+html[data-theme='dark'] .banner--danger { background: var(--palette-red-950); color: var(--palette-red-100); border-bottom-color: var(--palette-red-900); }
+html[data-theme='dark'] .banner--persistent { background: var(--palette-halo-950); color: var(--palette-halo-100); border-bottom-color: var(--palette-halo-800); }

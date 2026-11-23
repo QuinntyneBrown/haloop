@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elevation — Haloop design system</title>
+<meta name="description" content="Haloop shadow scale, surface hierarchy and z-order stacking layers.">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
+<link rel="stylesheet" href="../assets/ds.css">
+</head>
+<body id="top">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ds-shell">
+  <nav class="ds-nav" aria-label="Design system">
+    <div class="ds-nav__brand"><a href="../index.html">Haloop DS</a><button class="ds-theme-toggle" type="button" aria-pressed="false">☾ Dark</button></div>
+    <details open><summary>Foundations</summary><ul>
+      <li><a href="../foundations/color.html">Color</a></li>
+      <li><a href="../foundations/typography.html">Typography</a></li>
+      <li><a href="../foundations/spacing.html">Spacing</a></li>
+      <li><a href="../foundations/layout.html">Layout</a></li>
+      <li><a href="../foundations/elevation.html">Elevation</a></li>
+      <li><a href="../foundations/shape.html">Shape</a></li>
+      <li><a href="../foundations/motion.html">Motion</a></li>
+      <li><a href="../foundations/iconography.html">Iconography</a></li>
+      <li><a href="../foundations/theming.html">Theming</a></li>
+      <li><a href="../foundations/responsive.html">Responsive</a></li>
+      <li><a href="../foundations/accessibility.html">Accessibility</a></li>
+      <li><a href="../foundations/content.html">Content</a></li>
+    </ul></details>
+    <details open><summary>Components</summary><ul>
+      <li><a href="../components/button.html">Button</a></li>
+      <li><a href="../components/link.html">Link</a></li>
+      <li><a href="../components/menu.html">Menu</a></li>
+      <li><a href="../components/text-field.html">Text field</a></li>
+      <li><a href="../components/textarea.html">Textarea</a></li>
+      <li><a href="../components/select.html">Select</a></li>
+      <li><a href="../components/checkbox.html">Checkbox</a></li>
+      <li><a href="../components/radio-group.html">Radio group</a></li>
+      <li><a href="../components/switch.html">Switch</a></li>
+      <li><a href="../components/form-field.html">Form field</a></li>
+      <li><a href="../components/form-layout.html">Form layout</a></li>
+      <li><a href="../components/topbar.html">Top bar</a></li>
+      <li><a href="../components/sidebar.html">Sidebar navigation</a></li>
+      <li><a href="../components/tabs.html">Tabs</a></li>
+      <li><a href="../components/breadcrumb.html">Breadcrumb</a></li>
+      <li><a href="../components/pagination.html">Pagination</a></li>
+      <li><a href="../components/stepper.html">Stepper</a></li>
+      <li><a href="../components/skip-link.html">Skip link</a></li>
+      <li><a href="../components/card.html">Card</a></li>
+      <li><a href="../components/dialog.html">Dialog</a></li>
+      <li><a href="../components/tooltip.html">Tooltip</a></li>
+      <li><a href="../components/divider.html">Divider</a></li>
+      <li><a href="../components/layout-primitives.html">Layout primitives</a></li>
+      <li><a href="../components/table.html">Table</a></li>
+      <li><a href="../components/list.html">List</a></li>
+      <li><a href="../components/description-list.html">Description list</a></li>
+      <li><a href="../components/avatar.html">Avatar</a></li>
+      <li><a href="../components/badge.html">Badge & status</a></li>
+      <li><a href="../components/chip.html">Chip</a></li>
+      <li><a href="../components/stat.html">Stat / KPI</a></li>
+      <li><a href="../components/toast.html">Toast</a></li>
+      <li><a href="../components/alert.html">Alert & banner</a></li>
+      <li><a href="../components/inline-message.html">Inline message</a></li>
+      <li><a href="../components/progress-bar.html">Progress bar</a></li>
+      <li><a href="../components/spinner.html">Spinner</a></li>
+      <li><a href="../components/skeleton.html">Skeleton</a></li>
+      <li><a href="../components/empty-state.html">Empty state</a></li>
+      <li><a href="../components/error-page.html">Error page</a></li>
+    </ul></details>
+    <details open><summary>Patterns</summary><ul>
+      <li><a href="../patterns/forms.html">Forms</a></li>
+      <li><a href="../patterns/feedback-and-loading.html">Feedback & loading</a></li>
+      <li><a href="../patterns/empty-and-error-states.html">Empty & error states</a></li>
+      <li><a href="../patterns/navigation-and-page-structure.html">Navigation & page structure</a></li>
+      <li><a href="../patterns/dialogs-and-overlays.html">Dialogs & overlays</a></li>
+      <li><a href="../patterns/data-tables-and-lists.html">Data tables & lists</a></li>
+      <li><a href="../patterns/notifications.html">Notifications</a></li>
+      <li><a href="../patterns/content-and-tone.html">Content & tone</a></li>
+    </ul></details>
+  </nav>
+  <main id="main" class="ds-main">
+    <header class="ds-header">
+      <p class="ds-kicker">Foundation · Depth & layering</p>
+      <h1>Elevation</h1>
+      <p class="ds-lead">Four shadow levels, surface lightness progression and a strict nine-layer z-index scale.</p>
+      <div class="ds-meta"><span class="ds-pill">4 shadow levels</span><span class="ds-pill">15 tokens</span></div>
+      <ul class="ds-toc"><li><a href="#overview">Overview</a></li><li><a href="#shadows">Shadows</a></li><li><a href="#usage">Usage</a></li><li><a href="#tokens">Tokens</a></li></ul>
+    </header>
+
+    <section class="ds-section" id="overview"><h2><a href="#overview">Overview</a></h2>
+      <p>Elevation combines subtle shadows with surface lightness. In light theme, soft ink-tinted shadows lift cards and dialogs off warm paper; in dark theme, surface lightness steps upward (<code>--color-bg-canvas</code> → <code>--color-bg-surface</code> → <code>--color-bg-surface-raised</code>) alongside deeper shadows.</p>
+    </section>
+    <section class="ds-section" id="shadows"><h2><a href="#shadows">Shadow levels</a></h2>
+      <div class="ds-shadow-grid"><div class="ds-shadow-card" style="box-shadow: var(--shadow-1);"><b>Shadow 1 — Cards</b><small>Resting cards and primary button hover</small><code>--shadow-1</code></div><div class="ds-shadow-card" style="box-shadow: var(--shadow-2);"><b>Shadow 2 — Raised & tooltips</b><small>Interactive card hover, tooltips</small><code>--shadow-2</code></div><div class="ds-shadow-card" style="box-shadow: var(--shadow-3);"><b>Shadow 3 — Menus & toasts</b><small>Dropdown menus, popovers, toasts, skip link</small><code>--shadow-3</code></div><div class="ds-shadow-card" style="box-shadow: var(--shadow-4);"><b>Shadow 4 — Modals & drawers</b><small>Dialogs and slide-over sheets</small><code>--shadow-4</code></div></div>
+    </section>
+    <section class="ds-section" id="usage"><h2><a href="#usage">Z-order &amp; dark theme rules</a></h2>
+      <ul>
+        <li><b>Never write a raw <code>z-index</code></b> in component CSS; pick one of the nine <code>--z-*</code> layers.</li>
+        <li><b>Dark theme surfaces</b> rely on surface lightness + hairline borders first, shadow second, so raised panels stay legible on deep ink.</li>
+      </ul>
+    </section>
+    <section class="ds-section" id="tokens"><h2><a href="#tokens">Tokens</a></h2>
+      <div class="ds-table-wrap"><table class="ds-table">
+        <thead><tr><th scope="col">Role</th><th scope="col">Token</th><th scope="col" colspan="2">Value</th></tr></thead>
+        <tbody><tr><td>Shadow RGB channel</td><td><code>--shadow-color</code></td><td colspan="2"><span data-token="--shadow-color"></span></td></tr><tr><td>Shadow 1</td><td><code>--shadow-1</code></td><td colspan="2"><span data-token="--shadow-1"></span></td></tr><tr><td>Shadow 2</td><td><code>--shadow-2</code></td><td colspan="2"><span data-token="--shadow-2"></span></td></tr><tr><td>Shadow 3</td><td><code>--shadow-3</code></td><td colspan="2"><span data-token="--shadow-3"></span></td></tr><tr><td>Shadow 4</td><td><code>--shadow-4</code></td><td colspan="2"><span data-token="--shadow-4"></span></td></tr><tr><td>Focus shadow</td><td><code>--shadow-focus</code></td><td colspan="2"><span data-token="--shadow-focus"></span></td></tr><tr><td>Base layer</td><td><code>--z-base</code></td><td colspan="2"><span data-token="--z-base"></span></td></tr><tr><td>Raised (active button group)</td><td><code>--z-raised</code></td><td colspan="2"><span data-token="--z-raised"></span></td></tr><tr><td>Sticky headers</td><td><code>--z-sticky</code></td><td colspan="2"><span data-token="--z-sticky"></span></td></tr><tr><td>Dropdown menus</td><td><code>--z-dropdown</code></td><td colspan="2"><span data-token="--z-dropdown"></span></td></tr><tr><td>Modal backdrop overlay</td><td><code>--z-overlay</code></td><td colspan="2"><span data-token="--z-overlay"></span></td></tr><tr><td>Modal dialog / drawer</td><td><code>--z-modal</code></td><td colspan="2"><span data-token="--z-modal"></span></td></tr><tr><td>Popovers</td><td><code>--z-popover</code></td><td colspan="2"><span data-token="--z-popover"></span></td></tr><tr><td>Toast region</td><td><code>--z-toast</code></td><td colspan="2"><span data-token="--z-toast"></span></td></tr><tr><td>Tooltips & skip link</td><td><code>--z-tooltip</code></td><td colspan="2"><span data-token="--z-tooltip"></span></td></tr></tbody>
+      </table></div>
+    </section>
+    
+    <footer class="ds-footer"><span>Haloop design system · extracted from <a href="../../mocks/index.html">docs/mocks</a></span><a href="#top">Back to top</a></footer>
+  </main>
+</div>
+<script src="../assets/ds.js"></script>
+</body>
+</html>

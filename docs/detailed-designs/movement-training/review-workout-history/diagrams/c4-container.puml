@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Review workout history
+
+Person(athlete, "Athlete", "Reviews workout history")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders History table, filters, and Session detail page")
+  Container(summarizer, "Chrome Summarizer API", "Gemini Nano", "Summarizes weekly progress and individual session metrics")
+  ContainerDb(idb, "Local Workout Store", "IndexedDB", "Stores completed WorkoutSession records")
+}
+
+Rel(athlete, spa, "Searches, filters, and opens sessions", "DOM")
+Rel(spa, idb, "Queries workout records", "IndexedDB API")
+Rel(spa, summarizer, "Requests local text recap", "Browser API")
+@enduml

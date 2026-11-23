@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessibility — Haloop design system</title>
+<meta name="description" content="Haloop WCAG 2.2 AA commitments, interaction tokens and verification checklist.">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
+<link rel="stylesheet" href="../assets/ds.css">
+</head>
+<body id="top">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ds-shell">
+  <nav class="ds-nav" aria-label="Design system">
+    <div class="ds-nav__brand"><a href="../index.html">Haloop DS</a><button class="ds-theme-toggle" type="button" aria-pressed="false">☾ Dark</button></div>
+    <details open><summary>Foundations</summary><ul>
+      <li><a href="../foundations/color.html">Color</a></li>
+      <li><a href="../foundations/typography.html">Typography</a></li>
+      <li><a href="../foundations/spacing.html">Spacing</a></li>
+      <li><a href="../foundations/layout.html">Layout</a></li>
+      <li><a href="../foundations/elevation.html">Elevation</a></li>
+      <li><a href="../foundations/shape.html">Shape</a></li>
+      <li><a href="../foundations/motion.html">Motion</a></li>
+      <li><a href="../foundations/iconography.html">Iconography</a></li>
+      <li><a href="../foundations/theming.html">Theming</a></li>
+      <li><a href="../foundations/responsive.html">Responsive</a></li>
+      <li><a href="../foundations/accessibility.html">Accessibility</a></li>
+      <li><a href="../foundations/content.html">Content</a></li>
+    </ul></details>
+    <details open><summary>Components</summary><ul>
+      <li><a href="../components/button.html">Button</a></li>
+      <li><a href="../components/link.html">Link</a></li>
+      <li><a href="../components/menu.html">Menu</a></li>
+      <li><a href="../components/text-field.html">Text field</a></li>
+      <li><a href="../components/textarea.html">Textarea</a></li>
+      <li><a href="../components/select.html">Select</a></li>
+      <li><a href="../components/checkbox.html">Checkbox</a></li>
+      <li><a href="../components/radio-group.html">Radio group</a></li>
+      <li><a href="../components/switch.html">Switch</a></li>
+      <li><a href="../components/form-field.html">Form field</a></li>
+      <li><a href="../components/form-layout.html">Form layout</a></li>
+      <li><a href="../components/topbar.html">Top bar</a></li>
+      <li><a href="../components/sidebar.html">Sidebar navigation</a></li>
+      <li><a href="../components/tabs.html">Tabs</a></li>
+      <li><a href="../components/breadcrumb.html">Breadcrumb</a></li>
+      <li><a href="../components/pagination.html">Pagination</a></li>
+      <li><a href="../components/stepper.html">Stepper</a></li>
+      <li><a href="../components/skip-link.html">Skip link</a></li>
+      <li><a href="../components/card.html">Card</a></li>
+      <li><a href="../components/dialog.html">Dialog</a></li>
+      <li><a href="../components/tooltip.html">Tooltip</a></li>
+      <li><a href="../components/divider.html">Divider</a></li>
+      <li><a href="../components/layout-primitives.html">Layout primitives</a></li>
+      <li><a href="../components/table.html">Table</a></li>
+      <li><a href="../components/list.html">List</a></li>
+      <li><a href="../components/description-list.html">Description list</a></li>
+      <li><a href="../components/avatar.html">Avatar</a></li>
+      <li><a href="../components/badge.html">Badge & status</a></li>
+      <li><a href="../components/chip.html">Chip</a></li>
+      <li><a href="../components/stat.html">Stat / KPI</a></li>
+      <li><a href="../components/toast.html">Toast</a></li>
+      <li><a href="../components/alert.html">Alert & banner</a></li>
+      <li><a href="../components/inline-message.html">Inline message</a></li>
+      <li><a href="../components/progress-bar.html">Progress bar</a></li>
+      <li><a href="../components/spinner.html">Spinner</a></li>
+      <li><a href="../components/skeleton.html">Skeleton</a></li>
+      <li><a href="../components/empty-state.html">Empty state</a></li>
+      <li><a href="../components/error-page.html">Error page</a></li>
+    </ul></details>
+    <details open><summary>Patterns</summary><ul>
+      <li><a href="../patterns/forms.html">Forms</a></li>
+      <li><a href="../patterns/feedback-and-loading.html">Feedback & loading</a></li>
+      <li><a href="../patterns/empty-and-error-states.html">Empty & error states</a></li>
+      <li><a href="../patterns/navigation-and-page-structure.html">Navigation & page structure</a></li>
+      <li><a href="../patterns/dialogs-and-overlays.html">Dialogs & overlays</a></li>
+      <li><a href="../patterns/data-tables-and-lists.html">Data tables & lists</a></li>
+      <li><a href="../patterns/notifications.html">Notifications</a></li>
+      <li><a href="../patterns/content-and-tone.html">Content & tone</a></li>
+    </ul></details>
+  </nav>
+  <main id="main" class="ds-main">
+    <header class="ds-header">
+      <p class="ds-kicker">Foundation · Inclusive design</p>
+      <h1>Accessibility</h1>
+      <p class="ds-lead">WCAG 2.2 AA built into contrast tokens, shared focus rings, target sizes and WAI-ARIA component contracts.</p>
+      <div class="ds-meta"><span class="ds-pill ds-pill--ok">WCAG 2.2 AA</span><span class="ds-pill">4 interaction tokens</span></div>
+      <ul class="ds-toc"><li><a href="#overview">Overview</a></li><li><a href="#checklist">Commitments</a></li><li><a href="#usage">Testing</a></li><li><a href="#tokens">Tokens</a></li></ul>
+    </header>
+
+    <section class="ds-section" id="overview"><h2><a href="#overview">Overview</a></h2>
+      <p>Haloop targets <b>WCAG 2.2 Level AA</b> by construction. Accessibility is baked into the tokens (contrast, focus ring, target sizes, reduced motion) and into every component's semantic HTML and WAI-ARIA pattern.</p>
+    </section>
+    <section class="ds-section" id="checklist"><h2><a href="#checklist">System commitments</a></h2>
+      <div class="ds-table-wrap"><table class="ds-table">
+        <thead><tr><th scope="col">Principle</th><th scope="col">WCAG SC</th><th scope="col">Haloop rule</th></tr></thead>
+        <tbody>
+          <tr><td><b>Perceivable</b></td><td>1.4.3, 1.4.11, 1.4.1, 1.4.4, 1.4.10, 1.1.1, 2.3.3</td><td>≥ 4.5:1 text contrast and ≥ 3:1 UI/focus contrast in both themes; never colour alone; 100% rem sizing; reflows to 320px; <code>aria-hidden</code> on decorative SVGs; reduced-motion zeroes durations.</td></tr>
+          <tr><td><b>Operable</b></td><td>2.1.1, 2.1.2, 2.4.1, 2.4.3, 2.4.7, 2.4.11, 2.5.8</td><td>Full keyboard operability; skip link to <code>#main</code>; shared 2px focus ring with 2px offset; ≥ 24px min target and 44px comfortable target; no traps outside modal dialogs (Esc closes).</td></tr>
+          <tr><td><b>Understandable</b></td><td>3.1.1, 3.2.3, 3.3.1, 3.3.2, 3.3.3, 3.3.4</td><td>Visible labels on every control; inline error messages + top error summary linked via <code>aria-describedby</code>; confirmation dialogs for destructive actions like removing cached models.</td></tr>
+          <tr><td><b>Robust</b></td><td>4.1.2, 4.1.3</td><td>Native HTML first (<code>button</code>, <code>a</code>, <code>input</code>, <code>select</code>, <code>details</code>); live regions (<code>role="status"</code> / <code>role="alert"</code>) for toasts and save indicators.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section class="ds-section" id="usage"><h2><a href="#usage">Testing procedure</a></h2>
+      <ol>
+        <li>Run <code>check_contrast.py</code> after any palette or semantic colour change (must pass 100%).</li>
+        <li>Run <code>check_design_system.py</code> to verify landmarks, headings, labels, accessible names and links.</li>
+        <li>Keyboard-tab through interactive examples and verify focus visibility in both light and dark themes.</li>
+      </ol>
+    </section>
+    <section class="ds-section" id="tokens"><h2><a href="#tokens">Interaction tokens</a></h2>
+      <div class="ds-table-wrap"><table class="ds-table">
+        <thead><tr><th scope="col">Role</th><th scope="col">Token</th><th scope="col" colspan="2">Value</th></tr></thead>
+        <tbody><tr><td>Minimum target size (WCAG 2.5.8)</td><td><code>--target-min</code></td><td colspan="2"><span data-token="--target-min"></span></td></tr><tr><td>Comfortable touch target (44px)</td><td><code>--target-comfortable</code></td><td colspan="2"><span data-token="--target-comfortable"></span></td></tr><tr><td>Focus ring width</td><td><code>--focus-ring-width</code></td><td colspan="2"><span data-token="--focus-ring-width"></span></td></tr><tr><td>Focus ring offset</td><td><code>--focus-ring-offset</code></td><td colspan="2"><span data-token="--focus-ring-offset"></span></td></tr></tbody>
+      </table></div>
+    </section>
+    
+    <footer class="ds-footer"><span>Haloop design system · extracted from <a href="../../mocks/index.html">docs/mocks</a></span><a href="#top">Back to top</a></footer>
+  </main>
+</div>
+<script src="../assets/ds.js"></script>
+</body>
+</html>

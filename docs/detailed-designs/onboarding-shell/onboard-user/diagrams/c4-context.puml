@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Onboard user
+
+Person(athlete, "Athlete", "First-time Haloop user configuring local movement rhythm")
+System(haloop, "Haloop", "Local-first movement coaching, wearable telemetry, and devotional web application")
+System_Ext(browser_apis, "Browser Platform APIs", "Chrome Gemini Nano, WebGPU, Web Bluetooth, WebAssembly, and IndexedDB")
+
+Rel(athlete, haloop, "Completes first-run setup in", "HTTPS / Local Tab")
+Rel(haloop, browser_apis, "Probes capabilities and persists profile in", "Web APIs")
+@enduml

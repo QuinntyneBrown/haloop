@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Chat with coach
+
+Person(athlete, "Athlete", "Sends prompts to Coach")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders Coach thread, composer, and contextual actions")
+  Container(chrome_prompt, "Chrome Prompt API", "Gemini Nano", "Primary on-device text generation engine")
+  Container(qwen_worker, "Qwen Fallback Web Worker", "Transformers.js, WebGPU/WASM", "Runs Qwen2.5-0.5B-Instruct when Gemini Nano is off")
+  ContainerDb(idb, "Local Chat Store", "IndexedDB", "Persists Coach conversation history")
+}
+
+Rel(athlete, spa, "Submits messages", "DOM")
+Rel(spa, chrome_prompt, "Streams prompt completion", "Browser API")
+Rel(spa, qwen_worker, "Falls back to local generation", "postMessage")
+Rel(spa, idb, "Reads and writes messages", "IndexedDB API")
+@enduml

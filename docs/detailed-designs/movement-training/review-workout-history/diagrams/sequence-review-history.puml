@@ -1,0 +1,65 @@
+@startuml
+title UML sequence behaviour — Filter history and inspect session detail
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "HistoryPageComponent" as history
+  participant "SessionDetailPageComponent" as detail
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "HistoryStore" as store
+  participant "SummarizerService" as sum_svc
+end box
+box "Backend — Browser Storage and Chrome AI" #FFF4E5
+  database "IndexedDB (haloop-db)" as idb
+  participant "Chrome Summarizer API" as chrome_sum
+end box
+
+actor -> history : Open /history
+history -> store : load()
+store -> idb : Query completed sessions sorted newest-first
+alt IndexedDB locked by duplicate tab
+  idb --> store : LockError
+  store --> history : Error state (L2-016, L2-026)
+  history --> actor : Render "Could not load workout history" with Retry
+else Sessions loaded
+  idb --> store : WorkoutSessionSummary[]
+  store -> sum_svc : summarizeWeek(sessions) (L2-015)
+  sum_svc -> chrome_sum : Summarize weekly metrics locally
+  chrome_sum --> sum_svc : Weekly recap text
+  sum_svc --> store : Escaped recap text (L2-028)
+  store --> history : Render weekly recap and session table (L2-015)
+  actor -> history : Enter search query or select category chip
+  history -> store : Update searchQuery / activeCategory (L2-016)
+  alt Zero matching sessions
+    store --> history : Empty filtered list
+    history --> actor : Render "No sessions match" with Clear filters (L2-016)
+  else Matching sessions found
+    actor -> detail : Select session row (/history/:id)
+    detail -> idb : getById(id)
+    alt Record missing
+      idb --> detail : null
+      detail --> actor : Route to /404 (L2-017)
+    else Record corrupted
+      idb --> detail : CorruptionError
+      detail --> actor : Render "Session record could not be opened" with Retry / Back to History (L2-017, L2-026)
+    else Record valid
+      idb --> detail : SessionDetailRecord
+      detail --> actor : Display 4 KPIs, recap, devotional note, and Repeat session CTA (L2-017)
+    end
+  end
+end
+@enduml

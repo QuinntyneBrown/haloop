@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Onboard user
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(guard, "CapabilityGuard", "Angular CanActivateFn", "Routes incompatible browsers to /unsupported")
+  Component(unsupported, "UnsupportedBrowserPageComponent", "Angular Component", "Displays capability gaps and WASM fallback CTA")
+  Component(onboard, "OnboardingPageComponent", "Angular Component", "Renders 3-step setup form, validation, and completion")
+  Component(cap_svc, "BrowserCapabilityService", "Angular Service", "Probes Gemini Nano, WebGPU, Web Bluetooth, and OPFS")
+  Component(store, "UserProfileStore", "Signal Store", "Validates and persists UserProfile locally")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores local UserProfile record")
+}
+
+Rel(guard, cap_svc, "Checks browser support")
+Rel(guard, unsupported, "Redirects when unsupported")
+Rel(onboard, cap_svc, "Reads capability readiness")
+Rel(onboard, store, "Submits display name and movement focus")
+Rel(store, idb, "Persists profile record", "IndexedDB")
+@enduml

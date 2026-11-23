@@ -1,0 +1,53 @@
+@startuml
+title UML sequence behaviour — Submit a Coach message
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "CoachPageComponent" as page
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "CoachChatStore" as store
+  participant "CoachInferenceService" as inf
+end box
+box "Backend — On-Device AI Runtime" #D1FADF
+  participant "Chrome Prompt API / Qwen Worker" as engine
+end box
+box "Backend — Browser Storage" #FFF4E5
+  database "IndexedDB (haloop-db)" as idb
+end box
+
+actor -> page : Enter prompt and click Send
+alt Empty or whitespace-only prompt
+  page --> actor : Block submission and retain input focus (L2-012)
+else Non-empty prompt
+  page -> store : sendMessage(prompt)
+  store --> page : Append user message, submitting = true ("Generating on-device…") (L2-012)
+  store -> idb : Persist user message (escaped text, L2-028)
+  store -> inf : selectEngine() and stream prompt (zero upload, L2-027, L2-030)
+  inf -> engine : promptStream(prompt)
+  alt Chrome Prompt API context recycled
+    engine --> inf : SessionInterruptedError
+    inf --> store : Error
+    store --> page : Render "Gemini Nano session interrupted" with Restart session and Open AI Lab (L2-013)
+  else Stream succeeds
+    engine --> inf : Token chunks
+    inf --> store : Completed response text
+    store -> idb : Persist CoachMessage
+    store --> page : submitting = false, render escaped reply and contextual actions (L2-012, L2-028)
+    page --> actor : Display Coach response
+  end
+end
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+title UML sequence behaviour — Save preferences
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "SettingsPageComponent" as page
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "PreferencesStore" as store
+  participant "PreferencesValidator" as validator
+end box
+box "Backend — Browser Storage" #FFF4E5
+  participant "PreferencesRepository" as repo
+  database "IndexedDB (haloop-db)" as idb
+end box
+
+actor -> page : Edit preferences and submit Save preferences
+page -> store : save(draft)
+store -> validator : validate(draft) (L2-024, L2-028, L2-031)
+alt Validation fails (e.g. cacheBudgetMb < 512)
+  validator --> store : ValidationError[]
+  store --> page : Invalid state with field errors
+  page --> actor : Render top error summary and inline field error (L2-024)
+else Validation passes
+  validator --> store : []
+  store --> page : submitting = true
+  store -> repo : put(draft)
+  repo -> idb : Write UserPreferences record
+  alt Storage unavailable
+    idb --> repo : StorageError
+    repo --> store : Failure
+    store --> page : Error state
+    page --> actor : Display "Could not load local preferences" / retry (L2-024)
+  else Write succeeds
+    idb --> repo : Commit OK
+    repo --> store : Saved
+    store --> page : preferences updated, success = true
+    page --> actor : Display "Preferences saved on this device" (L2-024)
+  end
+end
+@enduml

@@ -1,0 +1,71 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Review workout history
+
+enum SessionCategory {
+  All
+  Strength
+  Run
+  Mobility
+}
+
+class WorkoutSessionSummary {
+  +string id
+  +string title
+  +SessionCategory category
+  +string dateLabel
+  +number durationMinutes
+  +number avgHeartRateBpm
+  +number formScorePercent
+  +string primaryMetricText
+}
+
+class SessionDetailRecord {
+  +string id
+  +string title
+  +string timeWindowLabel
+  +string sensorsUsed
+  +number durationMinutes
+  +number totalReps
+  +number formScorePercent
+  +number avgHeartRateBpm
+  +string recapText
+  +string devotionalNote
+  +string verseReference
+}
+
+class HistoryStore {
+  +Signal<WorkoutSessionSummary[]> allSessions
+  +Signal<string> searchQuery
+  +Signal<SessionCategory> activeCategory
+  +Signal<WorkoutSessionSummary[]> filteredSessions
+  +Signal<string> weeklyRecap
+  +clearFilters(): void
+  +load(): Promise<void>
+}
+
+class SummarizerService {
+  +summarizeWeek(sessions: WorkoutSessionSummary[]): Promise<string>
+  +summarizeSession(record: SessionDetailRecord): Promise<string>
+}
+
+class WorkoutHistoryRepository {
+  +listAll(): Promise<WorkoutSessionSummary[]>
+  +getById(id: string): Promise<SessionDetailRecord | null>
+}
+
+HistoryStore --> WorkoutHistoryRepository : queries
+HistoryStore ..> SummarizerService : generates recap via
+HistoryStore --> "*" WorkoutSessionSummary : filters
+HistoryStore --> SessionCategory : tracks
+WorkoutHistoryRepository ..> SessionDetailRecord : returns
+@enduml

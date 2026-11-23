@@ -1,0 +1,192 @@
+{
+  "project": "Haloop",
+  "required_states": {
+    "page": ["default", "loading", "empty", "error"],
+    "dialog": ["default", "busy", "invalid"],
+    "notification": ["info", "success", "warning", "danger"]
+  },
+  "screens": [
+    {
+      "id": "today",
+      "kind": "page",
+      "title": "Today",
+      "route": "/",
+      "states": ["default", "loading", "empty", "error"],
+      "not_applicable": {}
+    },
+    {
+      "id": "train",
+      "kind": "page",
+      "title": "Train",
+      "route": "/train",
+      "states": ["default", "loading", "empty", "error", "paused"],
+      "not_applicable": {}
+    },
+    {
+      "id": "coach",
+      "kind": "page",
+      "title": "Coach",
+      "route": "/coach",
+      "states": ["default", "loading", "empty", "error", "submitting"],
+      "not_applicable": {}
+    },
+    {
+      "id": "history",
+      "kind": "page",
+      "title": "History",
+      "route": "/history",
+      "states": ["default", "loading", "empty", "error", "no-results"],
+      "not_applicable": {}
+    },
+    {
+      "id": "session-detail",
+      "kind": "page",
+      "title": "Session detail",
+      "route": "/history/:id",
+      "states": ["default", "loading", "error"],
+      "not_applicable": {
+        "empty": "A session detail view displays one recorded workout; missing IDs route to the 404 page."
+      }
+    },
+    {
+      "id": "devices",
+      "kind": "page",
+      "title": "Devices",
+      "route": "/devices",
+      "states": ["default", "loading", "empty", "error"],
+      "not_applicable": {}
+    },
+    {
+      "id": "ai-lab",
+      "kind": "page",
+      "title": "AI Lab",
+      "route": "/lab",
+      "states": ["default", "loading", "empty", "error", "downloading", "wasm"],
+      "not_applicable": {}
+    },
+    {
+      "id": "settings",
+      "kind": "page",
+      "title": "Settings",
+      "route": "/settings",
+      "states": ["default", "loading", "error", "invalid", "submitting", "success"],
+      "not_applicable": {
+        "empty": "Settings always loads with default on-device preferences."
+      }
+    },
+    {
+      "id": "onboarding",
+      "kind": "page",
+      "title": "Welcome & setup",
+      "route": "/welcome",
+      "states": ["default", "loading", "error", "invalid", "success"],
+      "not_applicable": {
+        "empty": "Onboarding is a guided setup flow, not a collection."
+      }
+    },
+    {
+      "id": "not-found",
+      "kind": "page",
+      "title": "Page not found (404)",
+      "route": "/404",
+      "states": ["default"],
+      "not_applicable": {
+        "loading": "Static 404 fallback renders immediately without fetching data.",
+        "empty": "Static error page has no collection.",
+        "error": "The page itself is the 404 error state."
+      }
+    },
+    {
+      "id": "offline",
+      "kind": "page",
+      "title": "Offline mode",
+      "route": "/offline",
+      "states": ["default"],
+      "not_applicable": {
+        "loading": "Offline status renders immediately from cached service-worker state.",
+        "empty": "Offline status summarizes cached on-device capabilities rather than a user collection.",
+        "error": "The page itself represents the offline connectivity state."
+      }
+    },
+    {
+      "id": "unsupported-browser",
+      "kind": "page",
+      "title": "Unsupported browser",
+      "route": "/unsupported",
+      "states": ["default"],
+      "not_applicable": {
+        "loading": "Capability check completes synchronously on load.",
+        "empty": "Capability fallback page has no collection.",
+        "error": "The page itself represents the unsupported-browser state."
+      }
+    },
+    {
+      "id": "remove-model",
+      "kind": "dialog",
+      "title": "Remove cached model",
+      "opens_from": "ai-lab",
+      "states": ["default", "busy", "failed"],
+      "not_applicable": {
+        "invalid": "Confirmation dialog has no form inputs to validate."
+      }
+    },
+    {
+      "id": "pair-device",
+      "kind": "dialog",
+      "title": "Pair Bluetooth device",
+      "opens_from": "devices",
+      "states": ["default", "busy", "invalid", "failed"],
+      "not_applicable": {}
+    },
+    {
+      "id": "end-workout",
+      "kind": "dialog",
+      "title": "Finish workout",
+      "opens_from": "train",
+      "states": ["default", "busy", "invalid", "failed"],
+      "not_applicable": {}
+    },
+    {
+      "id": "verse-search",
+      "kind": "dialog",
+      "title": "Search Scripture",
+      "opens_from": "coach",
+      "states": ["default", "busy", "invalid"],
+      "not_applicable": {}
+    },
+    {
+      "id": "chrome-flags",
+      "kind": "dialog",
+      "title": "Enable Chrome built-in AI",
+      "opens_from": "ai-lab",
+      "states": ["default", "busy"],
+      "not_applicable": {
+        "invalid": "Informational setup guide has no form inputs to validate."
+      }
+    },
+    {
+      "id": "model-toast",
+      "kind": "notification",
+      "title": "Model cache toast",
+      "opens_from": "ai-lab",
+      "states": ["info", "success", "warning", "danger", "stacked"],
+      "not_applicable": {}
+    },
+    {
+      "id": "device-toast",
+      "kind": "notification",
+      "title": "Device connection toast",
+      "opens_from": "devices",
+      "states": ["info", "success", "warning", "danger"],
+      "not_applicable": {}
+    },
+    {
+      "id": "offline-banner",
+      "kind": "notification",
+      "title": "System status banner",
+      "opens_from": "today",
+      "states": ["info", "success", "warning", "danger", "persistent"],
+      "not_applicable": {}
+    }
+  ]
+}

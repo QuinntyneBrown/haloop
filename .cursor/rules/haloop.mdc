@@ -1,0 +1,18 @@
+---
+description: Core engineering, architecture, privacy, Angular, and design system rules for Haloop
+globs:
+alwaysApply: true
+---
+
+# Haloop Workspace Rules
+
+Follow `AGENTS.md` at the repository root as the canonical source of truth.
+
+## Non-Negotiables
+
+- **Local-first & zero cloud relay:** Camera frames, microphone audio, Web Bluetooth telemetry, Coach chats, and workout history must never leave the browser.
+- **Graceful fallback:** Support Chrome Built-in AI (Gemini Nano) with `onnx-community/Qwen2.5-0.5B-Instruct` fallback, WebGPU with WASM CPU fallback, and offline execution once models are cached.
+- **Angular conventions:** Use standalone components, `ChangeDetectionStrategy.OnPush`, Signals (`signal`, `computed`, `input`, `output`), `inject()`, native control flow (`@if`, `@for`, `@switch`), strict TypeScript (no `any`), and Web Workers for all Transformers.js inference.
+- **UI & Accessibility:** Match `docs/mocks/` and `docs/design-system/tokens/tokens.css`. Support light/dark themes, WCAG 2.2 AA accessibility, and all states in `docs/mocks/manifest.json`.
+- **Workflow:** Consult `.agents/skills/*/SKILL.md` for requirements, design docs, HTML mocks, design system, Angular, and incremental test-first implementation.
+- **Verification:** Run `python3 .agents/skills/writing-html-mocks/scripts/check_mocks.py docs/mocks --write` after mock edits, and `npm test && npm run lint && npm run build` after app edits.

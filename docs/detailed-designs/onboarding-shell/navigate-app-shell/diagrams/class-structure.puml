@@ -1,0 +1,57 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Navigate application shell
+
+enum BannerSeverity {
+  Info
+  Success
+  Warning
+  Danger
+  Persistent
+}
+
+class SystemBanner {
+  +string id
+  +BannerSeverity severity
+  +string message
+  +string actionLabel
+  +string actionRoute
+  +boolean dismissible
+}
+
+class SystemStatusStore {
+  +Signal<boolean> isOnline
+  +Signal<number> linkedDeviceCount
+  +Signal<number> cachedModelCount
+  +Signal<number> storageUsagePercent
+  +Signal<boolean> wasmFallbackActive
+  +Signal<boolean> writerFlagOff
+  +Signal<SystemBanner | null> activeBanner
+  +refreshStorageEstimate(): Promise<void>
+  +dismissBanner(id: string): void
+}
+
+class AppShellComponent {
+  +Signal<string> activeRoute
+  +readonly navItems: NavItem[]
+}
+
+class SystemStatusBannerComponent {
+  +input<SystemBanner | null> banner
+  +output<string> dismissed
+}
+
+AppShellComponent --> SystemStatusStore : reads
+AppShellComponent --> SystemStatusBannerComponent : embeds
+SystemStatusStore --> SystemBanner : computes
+SystemBanner --> BannerSeverity : has
+@enduml

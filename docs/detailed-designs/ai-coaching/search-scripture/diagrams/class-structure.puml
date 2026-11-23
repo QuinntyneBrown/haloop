@@ -1,0 +1,46 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Search scripture
+
+class VerseSearchResult {
+  +string reference
+  +string kjvExcerpt
+  +string translatedExcerpt
+  +number similarityScore
+}
+
+class MiniLmWorkerClient {
+  +embedAndSearch(query: string, topK: number): Promise<VerseSearchResult[]>
+}
+
+class ScriptureTranslatorAdapter {
+  +translate(text: string, targetLanguage: string): Promise<string>
+}
+
+class ScriptureSearchService {
+  +search(query: string, language: string): Promise<VerseSearchResult[]>
+}
+
+class VerseSearchDialogComponent {
+  +Signal<string> query
+  +Signal<boolean> busy
+  +Signal<string | null> validationError
+  +Signal<VerseSearchResult[]> results
+  +onSearch(): Promise<void>
+  +onInsert(verse: VerseSearchResult): void
+}
+
+VerseSearchDialogComponent --> ScriptureSearchService : queries
+ScriptureSearchService --> MiniLmWorkerClient : invokes
+ScriptureSearchService --> ScriptureTranslatorAdapter : translates via
+ScriptureSearchService ..> "*" VerseSearchResult : returns
+@enduml

@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Manage on-device models
+
+Person(athlete, "Athlete", "Manages local AI models")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders /lab, Chrome flags dialog, Remove model dialog, and model toasts")
+  Container(cache_worker, "Model Cache Web Worker", "Transformers.js, Fetch", "Downloads ONNX weights with progress and deletes cached entries")
+  ContainerDb(opfs, "Browser Model Cache", "Cache Storage / OPFS", "Stores cached open model weights within configured budget")
+}
+System_Ext(hf, "Hugging Face Hub", "Serves ONNX model artifacts")
+
+Rel(athlete, spa, "Initiates downloads, flag checks, and removals", "DOM")
+Rel(spa, cache_worker, "Dispatches download and remove commands", "postMessage")
+Rel(cache_worker, hf, "Fetches model files", "HTTPS")
+Rel(cache_worker, opfs, "Writes and deletes model artifacts", "Cache API / OPFS")
+@enduml

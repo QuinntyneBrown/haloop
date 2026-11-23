@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Navigate application shell
+
+Person(athlete, "Athlete", "Navigates Haloop across desktop and mobile viewports")
+System(haloop, "Haloop", "Local-first PWA movement coaching and devotional web application")
+System_Ext(browser_sw, "Browser Network & Storage APIs", "Service Worker cache, online/offline events, and StorageManager quota")
+
+Rel(athlete, haloop, "Navigates routes and inspects status banners in")
+Rel(haloop, browser_sw, "Reads connectivity, cache, and storage quota from", "Web APIs")
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Onboard user
+
+Person(athlete, "Athlete", "Configures profile and movement rhythm")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders /welcome and /unsupported routes")
+  Container(runtime, "Browser Capability Runtime", "Chrome AI, WebGPU, WASM", "Exposes hardware and on-device AI feature flags")
+  ContainerDb(idb, "Local Profile Store", "IndexedDB", "Persists user profile and setup completion state")
+}
+
+Rel(athlete, spa, "Interacts with", "DOM / Keyboard")
+Rel(spa, runtime, "Probes availability", "Browser APIs")
+Rel(spa, idb, "Initializes and writes profile", "IndexedDB API")
+@enduml

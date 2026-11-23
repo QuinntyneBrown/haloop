@@ -1,0 +1,61 @@
+@startuml
+title UML sequence behaviour — Onboard user
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "CapabilityGuard" as guard
+  participant "OnboardingPageComponent" as page
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "BrowserCapabilityService" as cap
+  participant "UserProfileStore" as store
+end box
+box "Backend — Browser Storage and Platform" #FFF4E5
+  participant "Browser Platform APIs" as platform
+  database "IndexedDB (haloop-db)" as idb
+end box
+
+actor -> guard : Open application on first run
+guard -> cap : Probe browser capabilities (L2-001)
+cap -> platform : Inspect Gemini Nano, WebGPU, Bluetooth, WASM
+platform --> cap : CapabilityReport
+cap --> guard : CapabilityReport
+alt All primary capabilities unavailable
+  guard --> actor : Route to /unsupported with WASM fallback (L2-001)
+else Compatible browser
+  guard --> page : Activate /welcome
+  page -> store : Initialize local storage check (L2-003)
+  store -> idb : Open haloop-db
+  alt Storage blocked (private browsing)
+    idb --> store : StorageError
+    store --> page : Storage unavailable state
+    page --> actor : Render "Could not initialize local storage" with Retry (L2-003)
+  else Storage available
+    idb --> store : Database ready
+    page --> actor : Render 3-step onboarding form (L2-002)
+    actor -> page : Submit display name and movement focus
+    alt Blank display name
+      page --> actor : Display top error summary and inline field error (L2-002)
+    else Valid display name
+      page -> store : saveInitialProfile(name, focus)
+      store -> idb : Put UserProfile record
+      idb --> store : Commit result
+      store --> page : Profile saved
+      page --> actor : Render completion state with Open Today and Review AI Lab (L2-002)
+    end
+  end
+end
+@enduml

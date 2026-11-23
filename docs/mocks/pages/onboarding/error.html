@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome & setup · error — Haloop mocks</title>
+<meta name="mock:kind" content="page">
+<meta name="mock:screen" content="onboarding">
+<meta name="mock:state" content="error">
+<meta name="description" content="Onboarding error state when local storage is unavailable.">
+<link rel="stylesheet" href="../../assets/tokens.css">
+<link rel="stylesheet" href="../../assets/ui.css">
+<link rel="stylesheet" href="../../assets/mock.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="auth-layout">
+  <main id="main" class="container container--narrow stack">
+    <div style="display:flex; justify-content:center; margin-bottom: var(--space-2);">
+      <a href="../today/default.html" class="topbar__brand" aria-label="Haloop home"><svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><ellipse cx="32" cy="12" rx="14" ry="4.25" stroke="var(--color-halo)" stroke-width="4"/><circle cx="32" cy="39" r="17" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-dasharray="88 18.8" transform="rotate(-38 32 39)"/></svg><span>haloop</span></a>
+    </div>
+<div class="card stack"><h1>Setup paused</h1><div class="alert alert--danger" role="alert"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div class="alert__body"><div class="alert__title">Could not initialize local storage</div><p class="text-sm">Private browsing windows cannot persist model caches. Open Haloop in a standard Chrome window.</p><div class="alert__actions"><a href="default.html">Try again</a></div></div></div></div>
+  </main>
+</div>
+
+
+<nav class="mock-bar" aria-label="Mock navigation">
+  <a class="mock-bar__home" href="../../index.html" aria-label="All mocks">⌂</a>
+  <span class="mock-bar__screen">Welcome & setup</span>
+  <ul class="mock-bar__states"><li><a href="default.html">default</a></li><li><a href="loading.html">loading</a></li><li><a href="error.html" aria-current="page">error</a></li><li><a href="invalid.html">invalid</a></li><li><a href="success.html">success</a></li></ul>
+  <button type="button" data-theme-toggle aria-pressed="false">☾ Dark</button>
+  <button type="button" data-chrome-toggle aria-label="Hide mock chrome">×</button>
+</nav>
+<script src="../../assets/mock.js"></script>
+</body>
+</html>

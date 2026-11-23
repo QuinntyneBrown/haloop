@@ -1,0 +1,45 @@
+@startuml
+title UML sequence behaviour — Navigate application shell and surface status banner
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "Angular Router" as router
+  participant "AppShellComponent" as shell
+  participant "SystemStatusBannerComponent" as banner
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "SystemStatusStore" as store
+end box
+box "Backend — Browser Platform" #FFF4E5
+  participant "Window & StorageManager" as platform
+end box
+
+platform -> store : Emit offline event or storage >= 90% (L2-005, L2-026)
+store -> store : Compute highest-priority SystemBanner
+store --> banner : Active SystemBanner signal
+banner --> actor : Announce banner via aria-live with action link (L2-005, L2-034)
+actor -> router : Navigate to target route
+alt Route matches primary path
+  router -> shell : Activate feature component and set aria-current="page" (L2-004)
+  shell --> actor : Render feature inside responsive shell (L2-032)
+else Route is /offline
+  router -> shell : Activate OfflinePageComponent (L2-025)
+  shell --> actor : Display cached model count and Train/Coach actions
+else Unrecognized path
+  router -> shell : Activate NotFoundPageComponent (L2-006)
+  shell --> actor : Render in-shell 404 with Today and History links
+end
+@enduml

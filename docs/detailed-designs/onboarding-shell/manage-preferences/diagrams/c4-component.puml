@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Manage preferences
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "SettingsPageComponent", "Angular Component", "Displays settings form, validation errors, and save status")
+  Component(store, "PreferencesStore", "Signal Store", "Holds reactive UserPreferences state and orchestrates saves")
+  Component(validator, "PreferencesValidator", "Domain Service", "Validates cache budget >= 512 MB and text bounds")
+  Component(repo, "PreferencesRepository", "Storage Adapter", "Reads and writes preferences in IndexedDB")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores singleton UserPreferences record")
+}
+
+Rel(page, store, "Loads and saves draft preferences")
+Rel(store, validator, "Validates draft before persistence")
+Rel(store, repo, "Persists valid preferences")
+Rel(repo, idb, "Reads and writes record", "IndexedDB")
+@enduml

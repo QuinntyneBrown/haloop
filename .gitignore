@@ -1,0 +1,9 @@
+.cache/
+docs/mocks/.cache/
+docs/design-system/.cache/
+/dist/
+/node_modules/
+/.angular/
+/test-results/
+/playwright-report/
+

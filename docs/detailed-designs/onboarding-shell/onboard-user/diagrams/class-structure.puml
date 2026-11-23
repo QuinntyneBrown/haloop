@@ -1,0 +1,66 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Onboard user
+
+enum MovementFocus {
+  StrengthMobility
+  RunningEndurance
+  GentleDailyHabit
+}
+
+enum InferenceBackend {
+  AutoWebGpu
+  WasmCpu
+}
+
+class CapabilityReport {
+  +boolean geminiNanoAvailable
+  +boolean webGpuAvailable
+  +boolean webBluetoothAvailable
+  +boolean wasmAvailable
+  +boolean storageAvailable
+}
+
+class UserProfile {
+  +string displayName
+  +MovementFocus movementFocus
+  +InferenceBackend preferredBackend
+  +string onboardingCompletedAt
+  +validateDisplayName(): boolean
+}
+
+class BrowserCapabilityService {
+  +probe(): Promise<CapabilityReport>
+  +isFullyUnsupported(report: CapabilityReport): boolean
+}
+
+class UserProfileStore {
+  +Signal<UserProfile | null> profile
+  +Signal<string | null> storageError
+  +saveInitialProfile(name: string, focus: MovementFocus): Promise<void>
+  +setWasmFallback(): Promise<void>
+}
+
+class OnboardingPageComponent {
+  +Signal<number> activeStep
+  +Signal<string | null> validationError
+  +submit(): Promise<void>
+  +skip(): void
+}
+
+OnboardingPageComponent ..> BrowserCapabilityService : probes
+OnboardingPageComponent --> UserProfileStore : updates
+BrowserCapabilityService ..> CapabilityReport : produces
+UserProfileStore --> UserProfile : persists
+UserProfile --> MovementFocus : has
+UserProfile --> InferenceBackend : uses
+@enduml

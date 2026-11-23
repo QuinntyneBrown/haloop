@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Review workout history
+
+Person(athlete, "Athlete", "Searches past workouts, reads weekly/session recaps, and repeats sessions")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(chrome_summarizer, "Chrome Built-in Summarizer API", "Generates weekly and per-session workout recaps on-device")
+
+Rel(athlete, haloop, "Browses /history and /history/:id in")
+Rel(haloop, chrome_summarizer, "Generates local workout recaps via", "Browser API")
+@enduml

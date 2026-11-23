@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — View today dashboard
+
+Person(athlete, "Athlete", "Reviews daily Scripture, planned workout, and weekly readiness")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(chrome_ai, "Chrome Built-in Translator API", "Translates KJV Scripture locally across 12 languages")
+
+Rel(athlete, haloop, "Views daily summary on /")
+Rel(haloop, chrome_ai, "Translates daily verse locally when non-English selected", "Browser API")
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — View today dashboard
+
+Person(athlete, "Athlete", "Views Today dashboard")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders TodayPageComponent and KPI grid")
+  Container(chrome_ai, "Chrome Translator API", "Gemini Nano", "Translates daily KJV verse on-device")
+  ContainerDb(idb, "Local Workout & Profile Store", "IndexedDB", "Stores user profile, daily plan, and workout history")
+}
+
+Rel(athlete, spa, "Opens /", "DOM")
+Rel(spa, idb, "Queries profile and weekly sessions", "IndexedDB API")
+Rel(spa, chrome_ai, "Translates verse text", "Browser API")
+@enduml

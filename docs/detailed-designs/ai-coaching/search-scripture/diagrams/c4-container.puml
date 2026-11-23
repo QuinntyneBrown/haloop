@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Search scripture
+
+Person(athlete, "Athlete", "Queries KJV Scripture")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders Search Scripture modal dialog over /coach")
+  Container(minilm_worker, "MiniLM Embedding Web Worker", "Transformers.js, WebGPU/WASM", "Embeds query and ranks KJV verses via all-MiniLM-L6-v2")
+  Container(translator, "Chrome Translator API", "Gemini Nano", "Translates KJV results across 12 languages on-device")
+  ContainerDb(cache, "Cached KJV Index & Model", "Cache Storage / OPFS", "Stores 23 MB all-MiniLM-L6-v2 weights and KJV vectors")
+}
+
+Rel(athlete, spa, "Enters query and inserts verse", "DOM / Keyboard")
+Rel(spa, minilm_worker, "Sends query text", "postMessage")
+Rel(minilm_worker, cache, "Loads weights and KJV vector index", "Cache API")
+Rel(spa, translator, "Translates verse excerpts", "Browser API")
+@enduml

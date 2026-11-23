@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Manage preferences
+
+Person(athlete, "Athlete", "Configures display name, language, compute backend, and cache budget")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(browser_storage, "Browser Storage", "IndexedDB persistence inside the local browser profile")
+
+Rel(athlete, haloop, "Updates preferences on /settings")
+Rel(haloop, browser_storage, "Reads and writes preferences locally", "IndexedDB API")
+@enduml

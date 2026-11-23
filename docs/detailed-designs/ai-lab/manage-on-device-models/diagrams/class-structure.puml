@@ -1,0 +1,67 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Manage on-device models
+
+enum ModelCacheState {
+  NotDownloaded
+  Downloading
+  Ready
+  Removing
+}
+
+class BuiltInApiStatus {
+  +string name
+  +string purpose
+  +boolean available
+  +string flagUrl
+}
+
+class OpenModelEntry {
+  +string id
+  +string title
+  +string repoId
+  +string taskLabel
+  +number sizeMb
+  +number downloadedMb
+  +ModelCacheState state
+}
+
+class ModelToast {
+  +string id
+  +string severity
+  +string title
+  +string message
+}
+
+class ModelCacheWorkerClient {
+  +downloadModel(repoId: string): AsyncIterable<number>
+  +removeModel(repoId: string): Promise<void>
+  +inspectCacheUsage(): Promise<number>
+}
+
+class ModelRegistryStore {
+  +Signal<BuiltInApiStatus[]> builtInApis
+  +Signal<OpenModelEntry[]> openModels
+  +Signal<number> cachedMb
+  +Signal<number> budgetMb
+  +Signal<ModelToast[]> toasts
+  +download(modelId: string): Promise<void>
+  +remove(modelId: string): Promise<boolean>
+  +recheckChromeFlags(): Promise<void>
+}
+
+ModelRegistryStore --> ModelCacheWorkerClient : invokes
+ModelRegistryStore --> "*" BuiltInApiStatus : tracks
+ModelRegistryStore --> "*" OpenModelEntry : manages
+ModelRegistryStore --> "*" ModelToast : queues
+OpenModelEntry --> ModelCacheState : has
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Navigate application shell
+
+Person(athlete, "Athlete", "Navigates primary routes")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Router, Signals", "Renders AppShell, routes, status banners, /offline, and /404")
+  Container(sw, "PWA Service Worker", "Angular Service Worker", "Serves cached static shell offline")
+  ContainerDb(cache, "Browser Cache & Quota", "Cache API / StorageManager", "Tracks cached shell and storage utilization")
+}
+
+Rel(athlete, spa, "Activates navigation links", "Keyboard / Pointer")
+Rel(spa, sw, "Loads cached shell assets from", "Fetch / Cache API")
+Rel(spa, cache, "Queries storage usage", "navigator.storage.estimate()")
+@enduml

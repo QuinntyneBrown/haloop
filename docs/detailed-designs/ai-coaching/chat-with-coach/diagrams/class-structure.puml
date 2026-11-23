@@ -1,0 +1,70 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Chat with coach
+
+enum MessageSender {
+  User
+  Coach
+}
+
+class CoachAction {
+  +string label
+  +string targetRoute
+}
+
+class CoachMessage {
+  +string id
+  +MessageSender sender
+  +string timestamp
+  +string text
+  +string engineLabel
+  +CoachAction[] actions
+}
+
+interface ICoachEngine {
+  +isAvailable(): Promise<boolean>
+  +promptStream(prompt: string): AsyncIterable<string>
+  +resetSession(): Promise<void>
+}
+
+class ChromePromptAdapter {
+  +isAvailable(): Promise<boolean>
+  +promptStream(prompt: string): AsyncIterable<string>
+  +resetSession(): Promise<void>
+}
+
+class QwenWorkerAdapter {
+  +isAvailable(): Promise<boolean>
+  +promptStream(prompt: string): AsyncIterable<string>
+  +resetSession(): Promise<void>
+}
+
+class CoachInferenceService {
+  +selectEngine(): Promise<ICoachEngine>
+}
+
+class CoachChatStore {
+  +Signal<CoachMessage[]> messages
+  +Signal<boolean> submitting
+  +Signal<string | null> sessionError
+  +sendMessage(text: string): Promise<void>
+  +restartSession(): Promise<void>
+}
+
+ChromePromptAdapter ..|> ICoachEngine : implements
+QwenWorkerAdapter ..|> ICoachEngine : implements
+CoachInferenceService ..> ICoachEngine : selects
+CoachChatStore --> CoachInferenceService : invokes
+CoachChatStore --> "*" CoachMessage : holds
+CoachMessage --> MessageSender : has
+CoachMessage *-- "*" CoachAction : offers
+@enduml

@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Chat with coach
+
+Person(athlete, "Athlete", "Asks for workout adjustments, form cues, and devotional reflections")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(chrome_prompt, "Chrome Built-in Prompt API", "Browser-managed Gemini Nano language model")
+
+Rel(athlete, haloop, "Converses with Coach on /coach")
+Rel(haloop, chrome_prompt, "Generates coaching responses locally via", "Browser API (zero cloud relay)")
+@enduml

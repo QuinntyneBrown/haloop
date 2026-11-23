@@ -1,0 +1,69 @@
+@startuml
+title UML sequence behaviour — Execute and save a live workout
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "TrainPageComponent" as page
+  participant "EndWorkoutDialogComponent" as dialog
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "WorkoutSessionStore" as store
+end box
+box "Backend — On-Device ML Web Workers" #D1FADF
+  participant "VitPose Worker" as pose
+  participant "Kokoro / Whisper Workers" as audio
+end box
+box "Backend — Browser Hardware and Storage" #FFF4E5
+  participant "MediaDevices (Camera/Mic)" as media
+  database "IndexedDB (haloop-db)" as idb
+end box
+
+actor -> page : Start Morning Strength (explicit gesture)
+page -> store : startSession(planId)
+store -> media : Request local camera and mic (L2-029)
+alt Camera permission denied
+  media --> store : NotAllowedError
+  store --> page : CameraBlocked state (L2-010)
+  page --> actor : Render "Camera permission blocked" with Try again or Audio-only option
+else Camera granted
+  media --> store : Local MediaStream (zero upload, L2-027)
+  store -> pose : Warm up vitpose-base-simple (WebGPU or WASM, L2-030)
+  pose --> store : Ready
+  loop Each video frame (>= 24 fps target)
+    store -> pose : Transfer ImageBitmap frame
+    pose --> store : PoseFrameResult (reps, formScore, cue) (L2-009)
+    opt Kokoro TTS cue triggered
+      store -> audio : Synthesize cue locally (L2-009)
+      audio --> actor : Speak coaching cue
+    end
+  end
+  actor -> page : Activate Finish session
+  page -> dialog : Open Finish workout? dialog (L2-011)
+  actor -> dialog : Enter reflection note and click Save session
+  alt Note length > 280 characters
+    dialog --> actor : Show inline validation error (L2-011, L2-028)
+  else Valid note
+    dialog -> idb : Persist WorkoutSession (busy state) (L2-011)
+    alt QuotaExceededError
+      idb --> dialog : Storage quota error
+      dialog --> actor : Show "Could not save session" retaining note (L2-011)
+    else Saved
+      idb --> dialog : sessionId
+      dialog --> actor : Close dialog and route to /history/:id (L2-011)
+    end
+  end
+end
+@enduml

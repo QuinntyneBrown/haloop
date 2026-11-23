@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Pair and monitor devices
+
+Person(athlete, "Athlete", "Pairs and monitors BLE heart-rate straps and running watches")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(ble_sensors, "BLE Fitness Wearables", "Heart-rate straps (Polar H10, Wahoo) and running watches (Coros Pace 3)")
+
+Rel(athlete, haloop, "Pairs, labels, and disconnects sensors on /devices")
+Rel(haloop, ble_sensors, "Streams heart rate, cadence, and battery directly via", "Web Bluetooth GATT (local)")
+@enduml

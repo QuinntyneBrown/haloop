@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Run live workout
+
+Person(athlete, "Athlete", "Performs guided or free-form workout with camera, voice, and wearable telemetry")
+System(haloop, "Haloop", "Local-first on-device workout studio running entirely in the browser tab")
+System_Ext(hardware, "Local Hardware Sensors", "Webcam, microphone, and BLE heart-rate/cadence wearables")
+
+Rel(athlete, haloop, "Controls workout and records reflection notes in")
+Rel(hardware, haloop, "Streams local video, audio, and BLE telemetry to", "Web APIs (never uploaded)")
+@enduml

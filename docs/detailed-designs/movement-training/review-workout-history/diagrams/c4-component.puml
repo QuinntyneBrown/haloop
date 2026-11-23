@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Review workout history
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(history_page, "HistoryPageComponent", "Angular Component", "Displays weekly recap, search, category chips, and session table")
+  Component(detail_page, "SessionDetailPageComponent", "Angular Component", "Displays session KPIs, recap, devotional note, and Repeat CTA")
+  Component(store, "HistoryStore", "Signal Store", "Manages session list, search/category filters, and loading/error states")
+  Component(summarizer, "SummarizerService", "Angular Service", "Invokes Chrome Summarizer API with safe fallback")
+  Component(repo, "WorkoutHistoryRepository", "Storage Adapter", "Reads and validates WorkoutSession records from IndexedDB")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores completed sessions")
+}
+
+Rel(history_page, store, "Reads filtered sessions and updates filters")
+Rel(detail_page, repo, "Loads session by ID")
+Rel(detail_page, summarizer, "Generates session recap")
+Rel(store, repo, "Loads session list")
+Rel(store, summarizer, "Generates weekly recap")
+Rel(repo, idb, "Reads records", "IndexedDB")
+@enduml

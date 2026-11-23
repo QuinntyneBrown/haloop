@@ -1,0 +1,11 @@
+# Haloop — Cline Rules
+
+Read and follow `AGENTS.md` at the repository root as the canonical source of truth.
+
+## Summary of Required Standards
+
+1. **Local-First Privacy:** All AI (Chrome Built-in Gemini Nano + Hugging Face Transformers.js on WebGPU/WASM), camera pose estimation, voice STT/TTS, and Web Bluetooth telemetry run strictly in the browser tab with zero cloud relay.
+2. **Angular Standards:** Use standalone components, `ChangeDetectionStrategy.OnPush`, Signals (`signal`, `computed`, `input`, `output`), `inject()`, native control flow (`@if`, `@for`, `@switch`), strict TypeScript (no `any`), and Web Workers for ML inference.
+3. **Design System & Mocks:** Keep UI aligned with `docs/mocks/` and `docs/design-system/tokens/tokens.css`. Support light/dark themes, WCAG 2.2 AA accessibility, and all required states from `docs/mocks/manifest.json`.
+4. **Skills & Workflow:** Consult `.agents/skills/*/SKILL.md` for requirements, detailed designs, HTML mocks, design systems, Angular code, and incremental test-first implementation.
+5. **Verification:** Run `python3 .agents/skills/writing-html-mocks/scripts/check_mocks.py docs/mocks --write` after mock changes, and `npm test`, `npm run lint`, and `npm run build` after app changes.

@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Manage preferences
+
+Person(athlete, "Athlete", "Edits local settings")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders /settings form and propagates live preference signals")
+  Container(worker_pool, "ML Web Worker Pool", "Transformers.js", "Applies preferred WebGPU/WASM backend and TTS configuration")
+  ContainerDb(idb, "Local Preferences Store", "IndexedDB", "Persists UserPreferences record")
+}
+
+Rel(athlete, spa, "Submits preference changes", "DOM")
+Rel(spa, idb, "Reads and persists preferences", "IndexedDB API")
+Rel(spa, worker_pool, "Updates backend and TTS settings", "postMessage")
+@enduml

@@ -1,0 +1,53 @@
+@startuml
+title UML sequence behaviour — Load Today dashboard
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "TodayPageComponent" as page
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "TodayDashboardFacade" as facade
+  participant "ScriptureService" as scripture
+end box
+box "Backend — Browser Storage and Chrome AI" #FFF4E5
+  database "IndexedDB (haloop-db)" as idb
+  participant "Chrome Translator API" as translator
+end box
+
+actor -> page : Open /
+page -> facade : load()
+facade --> page : loading = true (render skeletons) (L2-008)
+facade -> idb : Query UserProfile and last 7 days of sessions
+alt IndexedDB read timeout or error
+  idb --> facade : ReadError
+  facade --> page : error state
+  page --> actor : Render "Could not load today's local summary" with Retry and Open Train anyway (L2-008)
+else No movement rhythm configured
+  idb --> facade : Empty profile / no plan
+  facade --> page : empty state
+  page --> actor : Render "Your daily rhythm starts here" with Set up my rhythm and Explore AI Lab (L2-008)
+else Local data loaded
+  idb --> facade : Profile and weekly sessions
+  facade -> scripture : getDailyVerse(preferredLanguage)
+  opt Non-English language selected
+    scripture -> translator : Translate KJV verse locally (L2-007, L2-025)
+    translator --> scripture : Translated passage
+  end
+  scripture --> facade : DailyVerse
+  facade --> page : TodaySummary
+  page --> actor : Render Scripture card, movement plan, and 4 weekly KPIs (L2-007)
+end
+@enduml

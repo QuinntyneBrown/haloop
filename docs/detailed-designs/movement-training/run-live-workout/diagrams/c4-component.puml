@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Run live workout
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "TrainPageComponent", "Angular Component", "Displays camera stage HUD, rep count, KPIs, and pause/error states")
+  Component(dialog, "EndWorkoutDialogComponent", "Angular Dialog Component", "Validates <= 280 char reflection note and saves session")
+  Component(store, "WorkoutSessionStore", "Signal Store", "Owns workout state machine, timer, reps, and form metrics")
+  Component(pose_client, "PoseWorkerClient", "Worker Bridge", "Dispatches video frames to vitpose.worker.ts")
+  Component(audio_client, "VoiceAudioWorkerClient", "Worker Bridge", "Bridges whisper.worker.ts and kokoro.worker.ts")
+  Component(repo, "WorkoutSessionRepository", "Storage Adapter", "Writes WorkoutSession records to IndexedDB")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores completed workout sessions")
+}
+
+Rel(page, store, "Reads signals and dispatches pause/resume")
+Rel(page, dialog, "Opens on Finish session")
+Rel(dialog, store, "Reads summary metrics")
+Rel(dialog, repo, "Persists finished WorkoutSession")
+Rel(store, pose_client, "Subscribes to rep and form updates")
+Rel(store, audio_client, "Subscribes to voice commands and triggers TTS cues")
+Rel(repo, idb, "Commits session record", "IndexedDB")
+@enduml

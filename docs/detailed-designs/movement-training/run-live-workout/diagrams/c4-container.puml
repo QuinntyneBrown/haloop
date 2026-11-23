@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Run live workout
+
+Person(athlete, "Athlete", "Performs active workout")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders Train studio HUD, controls, and Finish workout dialog")
+  Container(pose_worker, "VitPose Web Worker", "Transformers.js, WebGPU/WASM", "Runs vitpose-base-simple for rep counting and form scoring")
+  Container(audio_worker, "Whisper & Kokoro Workers", "Transformers.js, WebGPU/WASM", "Runs voice command STT and spoken coaching cue TTS")
+  ContainerDb(idb, "Local Workout Store", "IndexedDB", "Persists completed WorkoutSession records")
+}
+
+Rel(athlete, spa, "Starts, pauses, and finishes session", "DOM / Voice")
+Rel(spa, pose_worker, "Transfers local video frames", "postMessage / ImageBitmap")
+Rel(spa, audio_worker, "Streams audio chunks and cue text", "postMessage")
+Rel(spa, idb, "Saves finished session and note", "IndexedDB API")
+@enduml

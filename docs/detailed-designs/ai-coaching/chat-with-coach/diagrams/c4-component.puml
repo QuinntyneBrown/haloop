@@ -1,0 +1,22 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Chat with coach
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "CoachPageComponent", "Angular Component", "Displays thread, privacy badge, composer, and error recovery")
+  Component(store, "CoachChatStore", "Signal Store", "Manages messages, submitting flag, and session restarts")
+  Component(inf_svc, "CoachInferenceService", "Domain Service", "Selects active local inference engine")
+  Component(nano, "ChromePromptAdapter", "Browser Adapter", "Manages Chrome Gemini Nano Prompt API session")
+  Component(qwen, "QwenWorkerAdapter", "Worker Bridge", "Streams completions from qwen.worker.ts")
+  Component(repo, "CoachHistoryRepository", "Storage Adapter", "Persists CoachMessage records in IndexedDB")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores local chat messages")
+}
+
+Rel(page, store, "Submits prompts and renders thread")
+Rel(store, inf_svc, "Requests local completion")
+Rel(store, repo, "Loads and persists messages")
+Rel(inf_svc, nano, "Uses primary engine")
+Rel(inf_svc, qwen, "Falls back when Nano unavailable")
+Rel(repo, idb, "Reads and writes records", "IndexedDB")
+@enduml

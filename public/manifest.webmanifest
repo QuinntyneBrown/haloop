@@ -1,0 +1,9 @@
+{
+  "name": "Haloop",
+  "short_name": "Haloop",
+  "description": "Local-first on-device movement coaching, wearable telemetry, and daily devotional web app.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#0f1217"
+}

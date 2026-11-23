@@ -1,0 +1,14 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Manage on-device models
+
+Person(athlete, "Athlete", "Inspects Chrome AI APIs and manages cached open models on /lab")
+System(haloop, "Haloop", "Local-first movement coaching and devotional web application")
+System_Ext(hf, "Hugging Face Hub", "Hosts ONNX open model weights downloaded on explicit user request")
+System_Ext(chrome_ai, "Chrome Built-in AI", "Browser-managed Gemini Nano APIs (Prompt, Summarizer, Writer, Translator)")
+
+Rel(athlete, haloop, "Downloads, monitors, and removes models on /lab")
+Rel(haloop, hf, "Downloads selected model weights from", "HTTPS (explicit user gesture only)")
+Rel(haloop, chrome_ai, "Probes Gemini Nano API readiness via", "Browser API")
+@enduml

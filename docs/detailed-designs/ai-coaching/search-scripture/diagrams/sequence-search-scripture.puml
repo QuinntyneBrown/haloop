@@ -1,0 +1,48 @@
+@startuml
+title UML sequence behaviour — Semantic Scripture search and insertion
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Athlete" as actor
+box "Frontend — Haloop Angular SPA" #E0F2FE
+  participant "VerseSearchDialogComponent" as dialog
+end box
+box "Backend — Local Application and Domain" #ECFDF3
+  participant "ScriptureSearchService" as svc
+end box
+box "Backend — On-Device ML Web Worker" #D1FADF
+  participant "MiniLM Worker" as worker
+end box
+box "Backend — Chrome Built-in AI" #FFF4E5
+  participant "Chrome Translator API" as translator
+end box
+
+actor -> dialog : Enter query and submit search
+alt Empty or whitespace-only query
+  dialog --> actor : Display inline validation prompt (L2-014)
+else Valid query
+  dialog -> svc : search(query, language)
+  dialog --> actor : Render busy state
+  svc -> worker : embedAndSearch(query, topK=5) (offline, L2-025, L2-027, L2-030)
+  worker --> svc : Ranked VerseSearchResult[]
+  opt Non-English language selected
+    svc -> translator : translate(excerpts, targetLanguage) (L2-014)
+    translator --> svc : Translated excerpts
+  end
+  svc --> dialog : Escaped VerseSearchResult[] (L2-028)
+  dialog --> actor : Render verse list with Insert buttons (L2-014)
+  actor -> dialog : Activate Insert on chosen verse
+  dialog --> actor : Insert verse into Coach composer/context and close dialog (L2-014)
+end
+@enduml

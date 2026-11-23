@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Search scripture
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(dialog, "VerseSearchDialogComponent", "Angular Dialog Component", "Captures query, displays busy/invalid states, and emits selected verse")
+  Component(search_svc, "ScriptureSearchService", "Domain Service", "Validates query and orchestrates vector search and translation")
+  Component(worker_client, "MiniLmWorkerClient", "Worker Bridge", "Communicates with minilm.worker.ts for semantic ranking")
+  Component(translator, "ScriptureTranslatorAdapter", "Browser Adapter", "Translates KJV text using Chrome Translator API")
+  Component(coach_store, "CoachChatStore", "Signal Store", "Receives inserted verse into active Coach context")
+}
+
+Rel(dialog, search_svc, "Submits search query")
+Rel(dialog, coach_store, "Inserts selected verse")
+Rel(search_svc, worker_client, "Computes semantic top-K matches")
+Rel(search_svc, translator, "Translates matched verses when non-English active")
+@enduml

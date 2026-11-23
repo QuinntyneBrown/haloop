@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Pair and monitor devices
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "DevicesPageComponent", "Angular Component", "Lists linked sensors, battery, connection status, and adapter errors")
+  Component(dialog, "PairDeviceDialogComponent", "Angular Dialog Component", "Selects sensor, validates label, and shows busy/timeout states")
+  Component(toast, "DeviceToastComponent", "Angular Component", "Renders info, success, warning, and danger device toasts")
+  Component(store, "BluetoothDeviceStore", "Signal Store", "Tracks connected WearableDevice list and live telemetry")
+  Component(adapter, "WebBluetoothAdapter", "Browser Adapter", "Wraps navigator.bluetooth GATT connect and characteristic listeners")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores paired device metadata")
+}
+
+Rel(page, store, "Reads devices and dispatches disconnect")
+Rel(page, dialog, "Opens on Pair device")
+Rel(dialog, store, "Initiates pairing with validated label")
+Rel(toast, store, "Subscribes to active DeviceToast")
+Rel(store, adapter, "Calls GATT scan, connect, and disconnect")
+Rel(store, idb, "Persists paired device labels", "IndexedDB")
+@enduml

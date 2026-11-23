@@ -1,0 +1,69 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Run live workout
+
+enum WorkoutPhase {
+  Idle
+  WarmingUp
+  Active
+  Paused
+  CameraBlocked
+  Saving
+}
+
+class PoseFrameResult {
+  +number completedReps
+  +number formScorePercent
+  +string coachingCue
+  +number fps
+}
+
+class WorkoutSession {
+  +string id
+  +string title
+  +string startedAt
+  +number elapsedSeconds
+  +number totalReps
+  +number avgFormScore
+  +number avgHeartRateBpm
+  +string reflectionNote
+  +validateNote(): boolean
+}
+
+class WorkoutSessionStore {
+  +Signal<WorkoutPhase> phase
+  +Signal<number> completedReps
+  +Signal<number> formScorePercent
+  +Signal<number> elapsedSeconds
+  +Signal<string> activeCue
+  +startSession(planId: string): Promise<void>
+  +pause(): void
+  +resume(): void
+  +continueAudioOnly(): void
+}
+
+class PoseWorkerClient {
+  +warmUp(backend: string): Promise<void>
+  +processFrame(frame: ImageBitmap): void
+  +stop(): void
+}
+
+class WorkoutSessionRepository {
+  +save(session: WorkoutSession): Promise<string>
+}
+
+WorkoutSessionStore --> WorkoutPhase : tracks
+WorkoutSessionStore ..> PoseWorkerClient : invokes
+PoseWorkerClient ..> PoseFrameResult : emits
+WorkoutSessionStore ..> WorkoutSession : builds
+WorkoutSessionRepository ..> WorkoutSession : persists
+@enduml

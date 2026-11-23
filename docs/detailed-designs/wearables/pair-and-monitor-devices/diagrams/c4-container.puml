@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Pair and monitor devices
+
+Person(athlete, "Athlete", "Manages wearable sensors")
+System_Boundary(haloop, "Haloop Browser Tab") {
+  Container(spa, "Haloop Angular SPA", "Angular 20+, Signals", "Renders /devices page, Pair device dialog, and device toasts")
+  Container(bt_api, "Web Bluetooth API", "Browser Hardware API", "Discovers nearby BLE peripherals and streams GATT characteristics")
+  ContainerDb(idb, "Local Device Store", "IndexedDB", "Persists paired device IDs and custom labels")
+}
+
+Rel(athlete, spa, "Triggers pairing and disconnect actions", "DOM")
+Rel(spa, bt_api, "Requests device and subscribes to notifications", "navigator.bluetooth")
+Rel(spa, idb, "Saves custom device labels", "IndexedDB API")
+@enduml

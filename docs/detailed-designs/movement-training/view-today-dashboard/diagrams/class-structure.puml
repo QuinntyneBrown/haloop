@@ -1,0 +1,63 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — View today dashboard
+
+class DailyVerse {
+  +string reference
+  +string kjvText
+  +string translatedText
+  +string languageCode
+}
+
+class PlannedExercise {
+  +string name
+  +string prescription
+  +number estimatedMinutes
+}
+
+class MovementPlan {
+  +string title
+  +string category
+  +number totalMinutes
+  +boolean readyOnDevice
+  +PlannedExercise[] exercises
+}
+
+class WeeklyKpi {
+  +string label
+  +string value
+  +string deltaText
+}
+
+class TodaySummary {
+  +string dateLabel
+  +string displayName
+  +number streakDays
+  +string sensorStatusText
+  +DailyVerse dailyVerse
+  +MovementPlan movementPlan
+  +WeeklyKpi[] kpis
+}
+
+class TodayDashboardFacade {
+  +Signal<TodaySummary | null> summary
+  +Signal<boolean> loading
+  +Signal<string | null> error
+  +load(): Promise<void>
+}
+
+TodayDashboardFacade --> TodaySummary : exposes
+TodaySummary *-- DailyVerse : contains
+TodaySummary *-- MovementPlan : contains
+MovementPlan *-- "*" PlannedExercise : lists
+TodaySummary *-- "4" WeeklyKpi : summarizes
+@enduml

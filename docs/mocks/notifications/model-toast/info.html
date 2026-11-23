@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Lab · info — Haloop mocks</title>
+<meta name="mock:kind" content="notification">
+<meta name="mock:screen" content="model-toast">
+<meta name="mock:state" content="info">
+<meta name="description" content="Model cache toast (info) shown over AI Lab.">
+<link rel="stylesheet" href="../../assets/tokens.css">
+<link rel="stylesheet" href="../../assets/ui.css">
+<link rel="stylesheet" href="../../assets/mock.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="app-shell">
+  <aside class="app-sidebar" aria-label="Sidebar">
+    <a class="app-sidebar__brand" href="../../pages/today/default.html" aria-label="Haloop home">
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><ellipse cx="32" cy="12" rx="14" ry="4.25" stroke="var(--color-halo)" stroke-width="4"/><circle cx="32" cy="39" r="17" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-dasharray="88 18.8" transform="rotate(-38 32 39)"/></svg><span>haloop</span>
+    </a>
+    <nav class="app-sidebar__nav" aria-label="Primary">
+      <a class="app-sidebar__link" href="../../pages/today/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Today</a>
+      <a class="app-sidebar__link" href="../../pages/train/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>Train</a>
+      <a class="app-sidebar__link" href="../../pages/coach/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Coach</a>
+      <a class="app-sidebar__link" href="../../pages/history/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>History</a>
+      <a class="app-sidebar__link" href="../../pages/devices/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>Devices</a>
+      <a class="app-sidebar__link" href="../../pages/ai-lab/default.html" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>AI Lab</a>
+      <a class="app-sidebar__link" href="../../pages/settings/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+    </nav>
+    <div class="app-sidebar__footer">
+      <div class="app-sidebar__status"><span class="status-dot status-dot--live" aria-hidden="true"></span><span>2 devices linked</span></div>
+      <div class="app-sidebar__status"><span class="status-dot status-dot--halo" aria-hidden="true"></span><span>Gemini Nano on-device</span></div>
+    </div>
+  </aside>
+
+  <div class="app-main-col">
+    
+    <header class="app-topbar">
+      <a class="app-topbar__logo" href="../../pages/today/default.html" aria-label="Haloop home"><svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><ellipse cx="32" cy="12" rx="14" ry="4.25" stroke="var(--color-halo)" stroke-width="4"/><circle cx="32" cy="39" r="17" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-dasharray="88 18.8" transform="rotate(-38 32 39)"/></svg></a>
+      <h1 class="app-topbar__title">AI Lab</h1>
+      <div class="app-topbar__actions">
+        
+        <a class="topbar-circle-btn topbar-circle-btn--mobile-only" href="../../pages/devices/default.html" aria-label="Devices"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg></a>
+        <a class="topbar-circle-btn topbar-circle-btn--mobile-only" href="../../pages/ai-lab/default.html" aria-label="AI Lab"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></a>
+      </div>
+    </header>
+
+    <main id="main" class="app-content">
+      <p class="text-soft" style="font-size: var(--font-size-lg); line-height: var(--line-height-normal);">
+        Every model Haloop uses runs in this tab. Chrome manages its built-in Gemini Nano; open models download once from Hugging Face and run on your GPU via WebGPU.
+      </p>
+
+      <section>
+        <div class="section-head">
+          <h2>Built into Chrome</h2>
+          <span class="text-sm text-muted">Gemini Nano · managed by the browser</span>
+        </div>
+        <ul class="builtin-grid">
+          <li class="builtin-row"><div><div class="builtin-row__title">Prompt API</div><div class="builtin-row__desc">Coach conversations and live cues</div></div><span class="text-sm text-live">Available</span></li>
+          <li class="builtin-row"><div><div class="builtin-row__title">Summarizer</div><div class="builtin-row__desc">Session and weekly recaps</div></div><span class="text-sm text-live">Available</span></li>
+          <li class="builtin-row"><div><div class="builtin-row__title">Writer &amp; Rewriter</div><div class="builtin-row__desc">Devotional reflections</div></div><a class="text-sm text-halo" href="../../dialogs/chrome-flags/default.html">Flag off</a></li>
+          <li class="builtin-row"><div><div class="builtin-row__title">Translator</div><div class="builtin-row__desc">Scripture in 12 languages</div></div><span class="text-sm text-live">Available</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <div class="section-head" style="align-items:flex-end;">
+          <div>
+            <h2>Open models</h2>
+            <p class="text-sm text-muted" style="margin-top:var(--space-1);">From Hugging Face, run with Transformers.js</p>
+          </div>
+          <div class="budget-box">
+            <div class="budget-box__meta"><span>286 MB cached</span><span>of 2 GB budget</span></div>
+            <div class="budget-bar" role="progressbar" aria-label="Model cache budget" aria-valuenow="286" aria-valuemin="0" aria-valuemax="2048">
+              <div class="budget-bar__fill" style="--value:14.0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-list">
+          <div class="model-row">
+            <div style="min-width:0;">
+              <div class="builtin-row__title">Rep counting &amp; form</div>
+              <a class="model-row__repo" href="https://huggingface.co/onnx-community/vitpose-base-simple" target="_blank" rel="noreferrer"><span class="truncate">onnx-community/vitpose-base-simple</span><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24" style="width:0.75rem;height:0.75rem;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="model-row__task">Pose estimation · camera</div>
+            <div class="model-row__size">94 MB</div>
+            <div class="model-row__action"><span class="inline-status inline-status--success"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>Ready</span></span><a class="btn btn--ghost btn--icon btn--sm" href="../../dialogs/remove-model/default.html" aria-label="Remove Rep counting &amp; form model"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></div>
+          </div>
+          <div class="model-row">
+            <div style="min-width:0;">
+              <div class="builtin-row__title">Voice commands</div>
+              <a class="model-row__repo" href="https://huggingface.co/onnx-community/whisper-base" target="_blank" rel="noreferrer"><span class="truncate">onnx-community/whisper-base</span><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24" style="width:0.75rem;height:0.75rem;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="model-row__task">Speech to text</div>
+            <div class="model-row__size">77 MB</div>
+            <div class="model-row__action"><span class="inline-status inline-status--success"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>Ready</span></span><a class="btn btn--ghost btn--icon btn--sm" href="../../dialogs/remove-model/default.html" aria-label="Remove Voice commands model"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></div>
+          </div>
+          <div class="model-row">
+            <div style="min-width:0;">
+              <div class="builtin-row__title">Coach voice</div>
+              <a class="model-row__repo" href="https://huggingface.co/onnx-community/Kokoro-82M-ONNX" target="_blank" rel="noreferrer"><span class="truncate">onnx-community/Kokoro-82M-ONNX</span><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24" style="width:0.75rem;height:0.75rem;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="model-row__task">Text to speech</div>
+            <div class="model-row__size">92 MB</div>
+            <div class="model-row__action"><span class="inline-status inline-status--success"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>Ready</span></span><a class="btn btn--ghost btn--icon btn--sm" href="../../dialogs/remove-model/default.html" aria-label="Remove Coach voice model"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></div>
+          </div>
+          <div class="model-row">
+            <div style="min-width:0;">
+              <div class="builtin-row__title">Verse search</div>
+              <a class="model-row__repo" href="https://huggingface.co/Xenova/all-MiniLM-L6-v2" target="_blank" rel="noreferrer"><span class="truncate">Xenova/all-MiniLM-L6-v2</span><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24" style="width:0.75rem;height:0.75rem;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="model-row__task">Embeddings · KJV index</div>
+            <div class="model-row__size">23 MB</div>
+            <div class="model-row__action"><span class="inline-status inline-status--success"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>Ready</span></span><a class="btn btn--ghost btn--icon btn--sm" href="../../dialogs/remove-model/default.html" aria-label="Remove Verse search model"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></div>
+          </div>
+          <div class="model-row">
+            <div style="min-width:0;">
+              <div class="builtin-row__title">Coach fallback</div>
+              <a class="model-row__repo" href="https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct" target="_blank" rel="noreferrer"><span class="truncate">onnx-community/Qwen2.5-0.5B-Instruct</span><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24" style="width:0.75rem;height:0.75rem;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="model-row__task">Text generation, when Nano is off</div>
+            <div class="model-row__size">480 MB</div>
+            <div class="model-row__action"><button class="btn btn--sm btn--pill" type="button"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="phone-tabs" aria-label="Mobile tabs">
+      <a class="phone-tabs__item" href="../../pages/today/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg><span>Today</span></a>
+      <a class="phone-tabs__item" href="../../pages/train/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg><span>Train</span></a>
+      <a class="phone-tabs__item" href="../../pages/coach/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span>Coach</span></a>
+      <a class="phone-tabs__item" href="../../pages/history/default.html"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span>History</span></a>
+    </nav>
+  </div>
+</div>
+
+
+<div class="toast-region" role="status" aria-live="polite">
+  <div class="toast toast--info">
+    <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <div class="toast__body">
+      <div class="toast__title">Downloading Coach fallback</div>
+      <div class="toast__text">Qwen2.5-0.5B-Instruct is downloading in the background (480 MB).</div>
+      
+    </div>
+    <button class="close" type="button" aria-label="Dismiss"><svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <span class="toast__progress" aria-hidden="true"></span>
+  </div>
+</div>
+
+<nav class="mock-bar" aria-label="Mock navigation">
+  <a class="mock-bar__home" href="../../index.html" aria-label="All mocks">⌂</a>
+  <span class="mock-bar__screen">Model cache toast</span>
+  <ul class="mock-bar__states"><li><a href="info.html" aria-current="page">info</a></li><li><a href="success.html">success</a></li><li><a href="warning.html">warning</a></li><li><a href="danger.html">danger</a></li><li><a href="stacked.html">stacked</a></li></ul>
+  <button type="button" data-theme-toggle aria-pressed="false">☾ Dark</button>
+  <button type="button" data-chrome-toggle aria-label="Hide mock chrome">×</button>
+</nav>
+<script src="../../assets/mock.js"></script>
+</body>
+</html>

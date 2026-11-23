@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Manage on-device models
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "AiLabPageComponent", "Angular Component", "Displays Gemini Nano grid, cache budget bar, and open model rows")
+  Component(flags_dlg, "ChromeFlagsDialogComponent", "Angular Dialog Component", "Shows chrome://flags instructions and re-check action")
+  Component(rm_dlg, "RemoveModelDialogComponent", "Angular Dialog Component", "Confirms cached model deletion and handles busy/failed states")
+  Component(toasts, "ModelToastRegionComponent", "Angular Component", "Displays single and stacked model cache toasts")
+  Component(store, "ModelRegistryStore", "Signal Store", "Tracks API statuses, model cache states, and budget usage")
+  Component(worker_client, "ModelCacheWorkerClient", "Worker Bridge", "Streams download progress and cache removal from worker")
+  ComponentDb(opfs, "Cache Storage / OPFS", "Browser Storage", "Holds cached ONNX model weights")
+}
+
+Rel(page, store, "Reads catalog and triggers downloads")
+Rel(page, flags_dlg, "Opens on Flag off")
+Rel(page, rm_dlg, "Opens on Remove model")
+Rel(flags_dlg, store, "Triggers re-check of Chrome APIs")
+Rel(rm_dlg, store, "Confirms model cache deletion")
+Rel(toasts, store, "Reads stacked ModelToast queue")
+Rel(store, worker_client, "Executes non-blocking download/remove")
+Rel(worker_client, opfs, "Reads, writes, and deletes cached models")
+@enduml

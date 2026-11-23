@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Manage preferences
+
+class UserPreferences {
+  +string displayName
+  +string scriptureLanguage
+  +string preferredBackend
+  +number cacheBudgetMb
+  +boolean kokoroTtsEnabled
+}
+
+class ValidationError {
+  +string field
+  +string message
+}
+
+class PreferencesValidator {
+  +validate(draft: UserPreferences): ValidationError[]
+}
+
+class PreferencesRepository {
+  +get(): Promise<UserPreferences>
+  +put(prefs: UserPreferences): Promise<void>
+}
+
+class PreferencesStore {
+  +Signal<UserPreferences> preferences
+  +Signal<boolean> submitting
+  +Signal<ValidationError[]> errors
+  +load(): Promise<void>
+  +save(draft: UserPreferences): Promise<boolean>
+}
+
+class SettingsPageComponent {
+  +onSubmit(): Promise<void>
+  +onReload(): Promise<void>
+}
+
+SettingsPageComponent --> PreferencesStore : binds
+PreferencesStore ..> PreferencesValidator : validates with
+PreferencesStore --> PreferencesRepository : persists via
+PreferencesStore --> UserPreferences : holds
+PreferencesValidator ..> ValidationError : returns
+@enduml

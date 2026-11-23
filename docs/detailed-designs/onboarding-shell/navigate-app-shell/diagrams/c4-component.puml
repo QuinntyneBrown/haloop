@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Navigate application shell
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(shell, "AppShellComponent", "Angular Component", "Renders desktop sidebar, mobile bottom tabs, topbar, and router outlet")
+  Component(banner, "SystemStatusBannerComponent", "Angular Component", "Displays info, success, warning, danger, and persistent banners")
+  Component(status_store, "SystemStatusStore", "Signal Store", "Aggregates offline, WASM, Chrome flag, and storage quota state")
+  Component(offline, "OfflinePageComponent", "Angular Component", "Summarizes cached offline capabilities at /offline")
+  Component(not_found, "NotFoundPageComponent", "Angular Component", "Renders in-shell 404 fallback at /404")
+}
+
+Rel(shell, banner, "Hosts above main content")
+Rel(shell, status_store, "Reads live sidebar indicators")
+Rel(banner, status_store, "Reads active SystemBanner")
+Rel(shell, offline, "Routes /offline")
+Rel(shell, not_found, "Routes unmatched paths to /404")
+@enduml

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidebar navigation — Haloop design system</title>
+<meta name="description" content="Always-ink 240px desktop navigation rail with Haloop brand mark, active Halo bar and live AI/device status footer.">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
+<link rel="stylesheet" href="../assets/ds.css">
+</head>
+<body id="top">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ds-shell">
+  <nav class="ds-nav" aria-label="Design system">
+    <div class="ds-nav__brand"><a href="../index.html">Haloop DS</a><button class="ds-theme-toggle" type="button" aria-pressed="false">☾ Dark</button></div>
+    <details open><summary>Foundations</summary><ul>
+      <li><a href="../foundations/color.html">Color</a></li>
+      <li><a href="../foundations/typography.html">Typography</a></li>
+      <li><a href="../foundations/spacing.html">Spacing</a></li>
+      <li><a href="../foundations/layout.html">Layout</a></li>
+      <li><a href="../foundations/elevation.html">Elevation</a></li>
+      <li><a href="../foundations/shape.html">Shape</a></li>
+      <li><a href="../foundations/motion.html">Motion</a></li>
+      <li><a href="../foundations/iconography.html">Iconography</a></li>
+      <li><a href="../foundations/theming.html">Theming</a></li>
+      <li><a href="../foundations/responsive.html">Responsive</a></li>
+      <li><a href="../foundations/accessibility.html">Accessibility</a></li>
+      <li><a href="../foundations/content.html">Content</a></li>
+    </ul></details>
+    <details open><summary>Components</summary><ul>
+      <li><a href="../components/button.html">Button</a></li>
+      <li><a href="../components/link.html">Link</a></li>
+      <li><a href="../components/menu.html">Menu</a></li>
+      <li><a href="../components/text-field.html">Text field</a></li>
+      <li><a href="../components/textarea.html">Textarea</a></li>
+      <li><a href="../components/select.html">Select</a></li>
+      <li><a href="../components/checkbox.html">Checkbox</a></li>
+      <li><a href="../components/radio-group.html">Radio group</a></li>
+      <li><a href="../components/switch.html">Switch</a></li>
+      <li><a href="../components/form-field.html">Form field</a></li>
+      <li><a href="../components/form-layout.html">Form layout</a></li>
+      <li><a href="../components/topbar.html">Top bar</a></li>
+      <li><a href="../components/sidebar.html">Sidebar navigation</a></li>
+      <li><a href="../components/tabs.html">Tabs</a></li>
+      <li><a href="../components/breadcrumb.html">Breadcrumb</a></li>
+      <li><a href="../components/pagination.html">Pagination</a></li>
+      <li><a href="../components/stepper.html">Stepper</a></li>
+      <li><a href="../components/skip-link.html">Skip link</a></li>
+      <li><a href="../components/card.html">Card</a></li>
+      <li><a href="../components/dialog.html">Dialog</a></li>
+      <li><a href="../components/tooltip.html">Tooltip</a></li>
+      <li><a href="../components/divider.html">Divider</a></li>
+      <li><a href="../components/layout-primitives.html">Layout primitives</a></li>
+      <li><a href="../components/table.html">Table</a></li>
+      <li><a href="../components/list.html">List</a></li>
+      <li><a href="../components/description-list.html">Description list</a></li>
+      <li><a href="../components/avatar.html">Avatar</a></li>
+      <li><a href="../components/badge.html">Badge & status</a></li>
+      <li><a href="../components/chip.html">Chip</a></li>
+      <li><a href="../components/stat.html">Stat / KPI</a></li>
+      <li><a href="../components/toast.html">Toast</a></li>
+      <li><a href="../components/alert.html">Alert & banner</a></li>
+      <li><a href="../components/inline-message.html">Inline message</a></li>
+      <li><a href="../components/progress-bar.html">Progress bar</a></li>
+      <li><a href="../components/spinner.html">Spinner</a></li>
+      <li><a href="../components/skeleton.html">Skeleton</a></li>
+      <li><a href="../components/empty-state.html">Empty state</a></li>
+      <li><a href="../components/error-page.html">Error page</a></li>
+    </ul></details>
+    <details open><summary>Patterns</summary><ul>
+      <li><a href="../patterns/forms.html">Forms</a></li>
+      <li><a href="../patterns/feedback-and-loading.html">Feedback & loading</a></li>
+      <li><a href="../patterns/empty-and-error-states.html">Empty & error states</a></li>
+      <li><a href="../patterns/navigation-and-page-structure.html">Navigation & page structure</a></li>
+      <li><a href="../patterns/dialogs-and-overlays.html">Dialogs & overlays</a></li>
+      <li><a href="../patterns/data-tables-and-lists.html">Data tables & lists</a></li>
+      <li><a href="../patterns/notifications.html">Notifications</a></li>
+      <li><a href="../patterns/content-and-tone.html">Content & tone</a></li>
+    </ul></details>
+  </nav>
+  <main id="main" class="ds-main">
+    <header class="ds-header">
+      <p class="ds-kicker">Component · Navigation</p>
+      <h1>Sidebar navigation</h1>
+      <p class="ds-lead">Always-ink 240px desktop navigation rail with Haloop brand mark, active Halo bar and live AI/device status footer.</p>
+      <div class="ds-meta"><span class="ds-pill ds-pill--ok">WCAG 2.2 AA</span><span class="ds-pill">Status: stable</span><span class="ds-pill">&lt;nav aria-label&gt;</span></div>
+      <ul class="ds-toc"><li><a href="#overview">Overview</a></li><li><a href="#anatomy">Anatomy</a></li><li><a href="#variants">Variants</a></li><li><a href="#sizes">Sizes</a></li><li><a href="#states">States</a></li><li><a href="#responsive">Responsive</a></li><li><a href="#theming">Theming</a></li><li><a href="#accessibility">Accessibility</a></li><li><a href="#content">Content</a></li><li><a href="#do-dont">Do and don't</a></li><li><a href="#tokens">Tokens</a></li><li><a href="#code">Code</a></li><li><a href="#sources">Sources</a></li></ul>
+    </header>
+
+    <section class="ds-section" id="overview"><h2><a href="#overview">Overview</a></h2>
+      <p>Haloop's desktop rail (<code>.app-sidebar</code>) stays deep ink in both light and dark themes, anchoring the six primary routes (Today, Train, Coach, History, Devices, AI Lab) plus a live status footer showing WebGPU/Nano readiness and Polar H10 connection.</p>
+    </section>
+
+    <section class="ds-section" id="anatomy"><h2><a href="#anatomy">Anatomy</a></h2>
+      <div class="ds-anatomy">
+        <figure class="ds-anatomy__figure"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 15rem; border-radius: var(--radius-lg);"><a class="app-sidebar__brand" href="#anatomy"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true"><ellipse cx="32" cy="12" rx="14" ry="4.25" stroke="var(--color-halo)" stroke-width="3.2"/><path d="M18 22V50M46 22V50M18 36H46" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg><span>haloop</span></a><div class="app-sidebar__nav" style="margin-top: var(--space-4);"><a class="app-sidebar__link" href="#anatomy" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Today</a><a class="app-sidebar__link" href="#anatomy"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>AI Lab</a></div><div class="app-sidebar__footer" style="margin-top: var(--space-4);"><div class="app-sidebar__status"><span class="status-dot status-dot--live"></span>Gemini Nano ready</div></div></aside></figure>
+        <ol class="ds-anatomy__list"><li><div><b>Brand mark</b><small>Outfit 24px wordmark + gold halo monogram.</small></div></li><li><div><b>Nav links</b><small>44px rows; active route shows 2px left Halo gold indicator.</small></div></li><li><div><b>Status footer</b><small>Live AI engine and Bluetooth sensor status dots.</small></div></li></ol>
+      </div>
+    </section>
+
+    <section class="ds-section" id="variants"><h2><a href="#variants">Variants</a></h2>
+      <div class="ds-example"><div class="ds-example__canvas"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 15rem; border-radius: var(--radius-lg);"><a class="app-sidebar__brand" href="#variants"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true"><ellipse cx="32" cy="12" rx="14" ry="4.25" stroke="var(--color-halo)" stroke-width="3.2"/><path d="M18 22V50M46 22V50M18 36H46" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg><span>haloop</span></a><div class="app-sidebar__nav" style="margin-top: var(--space-4);"><a class="app-sidebar__link" href="#variants" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Today</a><a class="app-sidebar__link" href="#variants" data-state="hover"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>Train</a><a class="app-sidebar__link" href="#variants"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Coach</a></div></aside></div></div>
+    </section>
+
+    <section class="ds-section" id="sizes" data-na="Desktop sidebar width is fixed at --layout-sidebar-width (240px)."><h2><a href="#sizes">Sizes</a></h2><p class="text-muted">Desktop sidebar width is fixed at --layout-sidebar-width (240px).</p></section>
+
+    <section class="ds-section" id="states"><h2><a href="#states">States</a></h2>
+      <div class="ds-matrix"><table><thead><tr><th scope="col">Default</th><th scope="col">Hover</th><th scope="col">Current page</th><th scope="col">Focus</th></tr></thead><tbody><tr><td style="background: var(--color-sidebar-bg);"><a class="app-sidebar__link" href="#states">Train</a></td><td style="background: var(--color-sidebar-bg);"><a class="app-sidebar__link" href="#states" data-state="hover">Train</a></td><td style="background: var(--color-sidebar-bg);"><a class="app-sidebar__link" href="#states" aria-current="page">Today</a></td><td style="background: var(--color-sidebar-bg);"><a class="app-sidebar__link" href="#states" data-state="focus">Coach</a></td></tr></tbody></table></div>
+      <h3>Both themes</h3>
+      <div class="ds-themes">
+        <div data-theme="light"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 100%; border-radius: var(--radius-md);"><a class="app-sidebar__link" href="#theming" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>AI Lab</a></aside></div>
+        <div data-theme="dark"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 100%; border-radius: var(--radius-md);"><a class="app-sidebar__link" href="#theming" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>AI Lab</a></aside></div>
+      </div>
+    </section>
+
+    <section class="ds-section" id="responsive"><h2><a href="#responsive">Responsive behaviour</a></h2>
+      <ul><li>Hidden below <code>64rem</code> (1024px) where <code>.phone-tabs</code> and topbar take over.</li><li>Stretches full viewport height on desktop.</li></ul>
+    </section>
+
+    <section class="ds-section" id="theming"><h2><a href="#theming">Theming</a></h2>
+      <p>Uses dedicated <code>--color-sidebar-*</code> tokens so the rail remains dark ink in light mode and shifts slightly deeper (<code>#0a0c10</code>) in dark mode.</p>
+    </section>
+
+    <section class="ds-section" id="accessibility"><h2><a href="#accessibility">Accessibility</a></h2>
+      <h3>Role and pattern</h3><p><code>&lt;aside&gt;</code> containing <code>&lt;nav aria-label="Primary"&gt;</code>; active link sets <code>aria-current="page"</code>.</p>
+      <h3>Keyboard</h3><div class="ds-table-wrap"><table class="ds-table ds-keys"><thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead><tbody><tr><td><kbd>Tab</kbd></td><td>Moves through navigation links in order.</td></tr><tr><td><kbd>Enter</kbd></td><td>Navigates to the selected route.</td></tr></tbody></table></div>
+      <h3>Focus</h3><p>Halo gold focus ring has ≥ 8:1 contrast against the dark ink rail.</p>
+      <h3>Labelling</h3><p>Active state is announced via <code>aria-current="page"</code>, not colour alone.</p>
+      <h3>Contrast</h3><div class="stack stack--sm"><div class="ds-pair"><span>Sidebar primary text</span><span class="ds-pair__ratio" data-contrast="--color-sidebar-fg|--color-sidebar-bg" data-min="4.5"></span></div><div class="ds-pair"><span>Sidebar muted text</span><span class="ds-pair__ratio" data-contrast="--color-sidebar-muted|--color-sidebar-bg" data-min="4.5"></span></div><div class="ds-pair"><span>Active halo indicator</span><span class="ds-pair__ratio" data-contrast="--color-sidebar-accent|--color-sidebar-raised" data-min="3"></span></div></div>
+      <h3>Motion</h3><p>Hover background transitions over <code>--duration-fast</code>.</p>
+      <h3>Touch</h3><p>44px link height meets comfortable touch targets.</p>
+    </section>
+
+    <section class="ds-section" id="content"><h2><a href="#content">Content</a></h2>
+      <ul><li>Use one- or two-word noun route names matching the topbar title.</li></ul>
+    </section>
+
+    <section class="ds-section" id="do-dont"><h2><a href="#do-dont">Do and don't</a></h2>
+      <div class="ds-dodont"><figure class="ds-do"><div class="ds-example__canvas"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 13rem; border-radius: var(--radius-md);"><a class="app-sidebar__link" href="#do-dont" aria-current="page"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Today</a></aside></div><figcaption>Mark the active route with aria-current="page".</figcaption></figure><figure class="ds-dont"><div class="ds-example__canvas"><aside class="app-sidebar" style="display: flex; min-height: auto; width: 13rem; border-radius: var(--radius-md);"><a class="app-sidebar__link" href="#do-dont"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Today</a></aside></div><figcaption>Omitting the active indicator leaves users disoriented.</figcaption></figure></div>
+    </section>
+
+    <section class="ds-section" id="tokens"><h2><a href="#tokens">Tokens</a></h2>
+      <div class="ds-table-wrap"><table class="ds-table">
+        <thead><tr><th scope="col">Part</th><th scope="col">Token</th><th scope="col">Light</th><th scope="col">Dark</th></tr></thead>
+        <tbody><tr><td>Sidebar bg</td><td><code>--color-sidebar-bg</code></td><td><span class="ds-swatch-cell" data-theme="light"><i data-token="--color-sidebar-bg" data-swatch></i><span data-token="--color-sidebar-bg"></span></span></td><td><span class="ds-swatch-cell" data-theme="dark"><i data-token="--color-sidebar-bg" data-swatch></i><span data-token="--color-sidebar-bg"></span></span></td></tr><tr><td>Sidebar raised</td><td><code>--color-sidebar-raised</code></td><td><span class="ds-swatch-cell" data-theme="light"><i data-token="--color-sidebar-raised" data-swatch></i><span data-token="--color-sidebar-raised"></span></span></td><td><span class="ds-swatch-cell" data-theme="dark"><i data-token="--color-sidebar-raised" data-swatch></i><span data-token="--color-sidebar-raised"></span></span></td></tr><tr><td>Sidebar fg</td><td><code>--color-sidebar-fg</code></td><td><span class="ds-swatch-cell" data-theme="light"><i data-token="--color-sidebar-fg" data-swatch></i><span data-token="--color-sidebar-fg"></span></span></td><td><span class="ds-swatch-cell" data-theme="dark"><i data-token="--color-sidebar-fg" data-swatch></i><span data-token="--color-sidebar-fg"></span></span></td></tr><tr><td>Sidebar accent</td><td><code>--color-sidebar-accent</code></td><td><span class="ds-swatch-cell" data-theme="light"><i data-token="--color-sidebar-accent" data-swatch></i><span data-token="--color-sidebar-accent"></span></span></td><td><span class="ds-swatch-cell" data-theme="dark"><i data-token="--color-sidebar-accent" data-swatch></i><span data-token="--color-sidebar-accent"></span></span></td></tr><tr><td>Width</td><td><code>--layout-sidebar-width</code></td><td colspan="2"><span data-token="--layout-sidebar-width"></span></td></tr></tbody>
+      </table></div>
+    </section>
+
+    <section class="ds-section" id="code"><h2><a href="#code">Code</a></h2>
+      <pre><code>&lt;aside class=&quot;app-sidebar&quot;&gt;
+  &lt;a class=&quot;app-sidebar__brand&quot; href=&quot;/&quot;&gt;haloop&lt;/a&gt;
+  &lt;nav class=&quot;app-sidebar__nav&quot; aria-label=&quot;Primary&quot;&gt;
+    &lt;a class=&quot;app-sidebar__link&quot; href=&quot;/&quot; aria-current=&quot;page&quot;&gt;Today&lt;/a&gt;
+  &lt;/nav&gt;
+&lt;/aside&gt;</code></pre>
+      <div class="ds-table-wrap"><table class="ds-table"><thead><tr><th scope="col">Class / attribute</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.app-sidebar</code></td><td>240px desktop ink rail.</td></tr><tr><td><code>.app-sidebar__link</code></td><td>44px route link with left Halo bar when aria-current="page".</td></tr><tr><td><code>.app-sidebar__footer</code></td><td>Bottom live status readout.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="ds-section" id="sources"><h2><a href="#sources">Sources</a></h2>
+      <p>Extracted from Haloop mocks:</p>
+      <ul><li><a href="../../mocks/pages/today/default.html">pages/today/default</a> — Full 6-route sidebar + live status footer</li><li><a href="../../mocks/pages/ai-lab/default.html">pages/ai-lab/default</a> — Active AI Lab route</li></ul>
+      <p><b>Drift fixed during extraction:</b> Snapped <code>.status-dot</code> in sidebar footer from 7px to 8px (<code>--space-2</code>).</p>
+    </section>
+    
+    <footer class="ds-footer"><span>Haloop design system · extracted from <a href="../../mocks/index.html">docs/mocks</a></span><a href="#top">Back to top</a></footer>
+  </main>
+</div>
+<script src="../assets/ds.js"></script>
+</body>
+</html>

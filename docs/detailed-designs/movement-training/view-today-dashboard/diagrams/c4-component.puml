@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — View today dashboard
+
+Container_Boundary(spa, "Haloop Angular SPA") {
+  Component(page, "TodayPageComponent", "Angular Component", "Displays Scripture card, movement plan, KPIs, and empty/error states")
+  Component(facade, "TodayDashboardFacade", "Signal Facade", "Aggregates daily summary, streak, and weekly KPI metrics")
+  Component(scripture, "ScriptureService", "Angular Service", "Selects daily KJV verse and translates via Chrome Translator API")
+  Component(repo, "WorkoutHistoryRepository", "Storage Adapter", "Queries recent workout records from IndexedDB")
+  Component(bt_store, "BluetoothDeviceStore", "Signal Store", "Provides connected sensor resting heart-rate status")
+  ComponentDb(idb, "haloop-db", "IndexedDB", "Stores profile and workout sessions")
+}
+
+Rel(page, facade, "Binds to TodaySummary signal")
+Rel(facade, scripture, "Loads daily verse")
+Rel(facade, repo, "Loads 7-day sessions and streak")
+Rel(facade, bt_store, "Reads resting HR sensor readiness")
+Rel(repo, idb, "Reads session records", "IndexedDB")
+@enduml
