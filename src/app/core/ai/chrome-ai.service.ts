@@ -59,7 +59,7 @@ export class ChromeAiService {
     return {
       text: fallback.reply,
       reflection: fallback.reflection,
-      engine: 'Haloop Coach · Gemini Nano',
+      engine: `Haloop Coach · ${fallback.engine}`,
     };
   }
 

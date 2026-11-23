@@ -16,6 +16,7 @@ export interface WorkerSearchOutput {
 export interface QwenGenerateOutput {
   readonly reply: string;
   readonly reflection: string;
+  readonly engine: string;
 }
 
 /**
@@ -106,6 +107,7 @@ export class MlWorkerClient implements OnDestroy {
         reply:
           'Breathe in for four counts, hold two, and exhale six before your plank holds. Keep shoulders stacked over elbows and let your pace stay unhurried.',
         reflection: 'Hebrews 12:1 — run with patience the race set before you.',
+        engine: 'Deterministic fallback',
       }),
     );
   }

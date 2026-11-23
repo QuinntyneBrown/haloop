@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-009, L2-012, L2-014, L2-018, L2-027, L2-030
-// Description: Verify dedicated ML Web Worker client, Chrome Built-in AI fallback adapter, and BLE Heart Rate / Battery GATT payload parsers.
+// Description: Verify dedicated ML Web Worker client (including on-device Qwen2.5-0.5B-Instruct fallback wiring), Chrome Built-in AI fallback adapter, and BLE Heart Rate / Battery GATT payload parsers.
 
 import { TestBed } from '@angular/core/testing';
 import { ChromeAiService } from './chrome-ai.service';
@@ -33,6 +33,19 @@ describe('ML Worker, Chrome AI & BLE GATT Adapters', () => {
     const reply = await chromeAi.promptCoach('Give me a breath prayer before plank holds');
     expect(reply.text.length).toBeGreaterThan(20);
     expect(reply.engine).toContain('Haloop Coach');
+  });
+
+  it('returns a non-empty reply and engine label from the Qwen worker path (L2-012, L2-027, L2-030)', async () => {
+    const output = await worker.generateCoachReply('Coach me through steady squats');
+    expect(output.reply.length).toBeGreaterThan(0);
+    expect(output.reflection).toContain('Hebrews 12:1');
+    expect(output.engine.length).toBeGreaterThan(0);
+  });
+
+  it('reports the worker-reported engine label when falling back from Gemini Nano (L2-012)', async () => {
+    const reply = await chromeAi.promptCoach('How should I pace my run today?');
+    expect(reply.text.length).toBeGreaterThan(20);
+    expect(reply.engine).toMatch(/^Haloop Coach · /);
   });
 
   it('parses standard BLE 8-bit and 16-bit Heart Rate and Battery characteristics (L2-018)', () => {
