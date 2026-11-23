@@ -1,17 +1,42 @@
 /// <reference lib="webworker" />
 
-import { env, pipeline } from '@huggingface/transformers';
+import {
+  QWEN_REFLECTION,
+  QwenDevice,
+  QwenLibrary,
+  QwenPreferredBackend,
+  createQwenEngine,
+} from './qwen-engine';
+
+interface WebGpuLike {
+  requestAdapter(): Promise<{ readonly features: { has(feature: string): boolean } } | null>;
+}
 
 export type WorkerRequest =
   | { id: string; type: 'pose-step'; currentReps: number; targetReps: number; backend: string }
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
-  | { id: string; type: 'qwen-generate'; prompt: string }
+  | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend }
+  | { id: string; type: 'qwen-status' }
+  | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
+  | { id: string; type: 'qwen-remove' }
   | { id: string; type: 'whisper-command'; transcript: string };
 
 export type WorkerResponse =
   | { id: string; type: 'pose-step'; completedReps: number; formScorePercent: number; cue: string; backend: string }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
-  | { id: string; type: 'qwen-generate'; reply: string; reflection: string; engine: string; reason?: string }
+  | {
+      id: string;
+      type: 'qwen-generate';
+      reply: string;
+      reflection: string;
+      engine: string;
+      device: QwenDevice | null;
+      reason?: string;
+    }
+  | { id: string; type: 'qwen-status'; cached: boolean }
+  | { id: string; type: 'qwen-progress'; loadedBytes: number; totalBytes: number }
+  | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string }
+  | { id: string; type: 'qwen-remove'; ok: boolean; reason?: string }
   | { id: string; type: 'whisper-command'; action: 'next-set' | 'pause' | 'resume' | 'finish' | 'none' };
 
 const CUES = [
@@ -21,92 +46,27 @@ const CUES = [
   'Steady breathing — strong hip stability on that rep.',
 ];
 
-const QWEN_MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
-const QWEN_REFLECTION = 'Hebrews 12:1 — run with patience the race set before you.';
+/** Small local-only marker store for ML runtime facts about this device (no user data). */
+const ML_STATE_CACHE = 'haloop-ml-state';
+const WEBGPU_REJECTED_KEY = '/haloop-ml-state/qwen-webgpu-rejected';
 
-// Model downloads are initiated from the AI Lab main thread; this worker must
-// resolve the pipeline from the local Cache API / IndexedDB only so that Coach
-// prompts never trigger outbound network requests (L2-027).
-env.allowRemoteModels = false;
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-
-type QwenGenerator = (messages: readonly { role: string; content: string }[], options: Record<string, unknown>) => Promise<unknown>;
-
-let qwenGenerator: Promise<QwenGenerator> | null = null;
-
-function loadQwenGenerator(): Promise<QwenGenerator> {
-  qwenGenerator ??= (async () => {
-    const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm';
-    try {
-      return (await pipeline('text-generation', QWEN_MODEL_ID, {
-        device,
-        dtype: device === 'webgpu' ? 'fp16' : 'q4',
-        local_files_only: true,
-      })) as unknown as QwenGenerator;
-    } catch (error) {
-      if (device === 'wasm') {
-        throw error;
-      }
-      // WebGPU session unavailable for this model — fall back to WASM CPU.
-      return (await pipeline('text-generation', QWEN_MODEL_ID, {
-        device: 'wasm',
-        dtype: 'q4',
-        local_files_only: true,
-      })) as unknown as QwenGenerator;
-    }
-  })();
-  return qwenGenerator;
-}
-
-function ruleBasedCoachReply(prompt: string): string {
-  const lower = prompt.toLowerCase();
-  return lower.includes('plank') || lower.includes('breath')
-    ? 'Breathe in for four counts, hold two, and exhale six before your plank holds. Keep shoulders stacked over elbows and let your pace stay unhurried.'
-    : lower.includes('sore') || lower.includes('tight') || lower.includes('calf')
-      ? 'Keep today’s load 20% lighter, add 90 seconds of slow ankle rocks before set one, and prioritize full range of motion.'
-      : 'Focus on unhurried tempo (3-1-1), clean posture, and steady breathing across every working set today.';
-}
-
-interface QwenGeneratedMessage {
-  content?: string;
-}
-
-interface QwenGeneratedOutput {
-  generated_text?: string | readonly QwenGeneratedMessage[];
-}
-
-function extractQwenReply(output: unknown): string {
-  if (!Array.isArray(output) || output.length === 0) {
-    return '';
-  }
-  const first = output[0] as QwenGeneratedOutput;
-  const generated = first.generated_text;
-  if (Array.isArray(generated)) {
-    return generated.at(-1)?.content?.trim() ?? '';
-  }
-  return typeof generated === 'string' ? generated.trim() : '';
-}
-
-async function generateQwenReply(prompt: string): Promise<{ reply: string; engine: string }> {
-  const generator = await loadQwenGenerator();
-  const output = await generator(
-    [
-      {
-        role: 'system',
-        content:
-          'You are Haloop Coach, a concise, encouraging on-device movement and devotional coach. Respond in 2-3 sentences.',
-      },
-      { role: 'user', content: prompt },
-    ],
-    { max_new_tokens: 160, do_sample: false, return_full_text: false },
-  );
-  const reply = extractQwenReply(output);
-  return {
-    reply: reply.length > 0 ? reply : ruleBasedCoachReply(prompt),
-    engine: 'Qwen2.5-0.5B-Instruct (on-device)',
-  };
-}
+const qwen = createQwenEngine({
+  // Imported on the first Qwen message only, so pose, search, and voice stay light.
+  loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as QwenLibrary,
+  detectWebGpu: async () => {
+    const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
+    const adapter = await gpu?.requestAdapter();
+    return adapter?.features.has('shader-f16') ?? false;
+  },
+  baseUrl: self.location.href,
+  webGpuVerdict: {
+    isRejected: async () => Boolean(await (await caches.open(ML_STATE_CACHE)).match(WEBGPU_REJECTED_KEY)),
+    setRejected: async (rejected) => {
+      const cache = await caches.open(ML_STATE_CACHE);
+      await (rejected ? cache.put(WEBGPU_REJECTED_KEY, new Response('1')) : cache.delete(WEBGPU_REJECTED_KEY));
+    },
+  },
+});
 
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
@@ -153,28 +113,43 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
     }
 
     case 'qwen-generate': {
-      generateQwenReply(data.prompt)
-        .then(({ reply, engine }) => {
-          const res: WorkerResponse = {
-            id: data.id,
-            type: 'qwen-generate',
-            reply,
-            reflection: QWEN_REFLECTION,
-            engine,
-          };
-          postMessage(res);
+      void qwen.generate(data.prompt, data.preferredBackend ?? 'AutoWebGpu').then((result) => {
+        if (result.reason) {
+          // Diagnostic only: explains why on-device Qwen was not used. Never includes the prompt.
+          console.info(`[Haloop] Qwen2.5-0.5B-Instruct unavailable, using deterministic reply: ${result.reason}`);
+        }
+        const res: WorkerResponse = { id: data.id, type: 'qwen-generate', reflection: QWEN_REFLECTION, ...result };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'qwen-status': {
+      void qwen.status().then((cached) => {
+        const res: WorkerResponse = { id: data.id, type: 'qwen-status', cached };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'qwen-download': {
+      void qwen
+        .download(data.preferredBackend ?? 'AutoWebGpu', (progress) => {
+          const event: WorkerResponse = { id: data.id, type: 'qwen-progress', ...progress };
+          postMessage(event);
         })
-        .catch((error: unknown) => {
-          const res: WorkerResponse = {
-            id: data.id,
-            type: 'qwen-generate',
-            reply: ruleBasedCoachReply(data.prompt),
-            reflection: QWEN_REFLECTION,
-            engine: 'Deterministic fallback',
-            reason: error instanceof Error ? error.message : String(error),
-          };
+        .then((result) => {
+          const res: WorkerResponse = { id: data.id, type: 'qwen-download', ...result };
           postMessage(res);
         });
+      break;
+    }
+
+    case 'qwen-remove': {
+      void qwen.remove().then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'qwen-remove', ...result };
+        postMessage(res);
+      });
       break;
     }
 

@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
+import { DETERMINISTIC_ENGINE, QWEN_REFLECTION, ruleBasedCoachReply } from '../../workers/qwen-engine';
 
 export interface PoseStepOutput {
   readonly completedReps: number;
@@ -13,10 +14,40 @@ export interface WorkerSearchOutput {
   readonly score: number;
 }
 
+export type QwenPreferredBackend = 'AutoWebGpu' | 'WasmCpu';
+
 export interface QwenGenerateOutput {
   readonly reply: string;
   readonly reflection: string;
   readonly engine: string;
+  /** Why the deterministic reply was used instead of on-device Qwen inference, when it was. */
+  readonly reason?: string;
+}
+
+export interface QwenDownloadProgress {
+  readonly loadedBytes: number;
+  readonly totalBytes: number;
+}
+
+export interface QwenOperationOutput {
+  readonly ok: boolean;
+  readonly reason?: string;
+}
+
+/** `null` means no ML worker exists in this environment, so the real cache cannot be inspected. */
+export type QwenCacheStatus = boolean | null;
+
+interface PendingRequest {
+  readonly resolve: (value: unknown) => void;
+  readonly fallback: () => unknown;
+  readonly onProgress?: (progress: QwenDownloadProgress) => void;
+}
+
+interface WorkerMessage {
+  readonly id: string;
+  readonly type?: string;
+  readonly loadedBytes?: number;
+  readonly totalBytes?: number;
 }
 
 /**
@@ -26,7 +57,7 @@ export interface QwenGenerateOutput {
 @Injectable({ providedIn: 'root' })
 export class MlWorkerClient implements OnDestroy {
   private worker: Worker | null = null;
-  private readonly pending = new Map<string, (value: unknown) => void>();
+  private readonly pending = new Map<string, PendingRequest>();
   private seq = 0;
 
   private ensureWorker(): Worker | null {
@@ -40,27 +71,49 @@ export class MlWorkerClient implements OnDestroy {
       this.worker = new Worker(new URL('../../workers/ml-inference.worker', import.meta.url), {
         type: 'module',
       });
-      this.worker.onmessage = ({ data }: MessageEvent<{ id: string }>) => {
-        const resolver = this.pending.get(data.id);
-        if (resolver) {
-          this.pending.delete(data.id);
-          resolver(data);
+      this.worker.onmessage = ({ data }: MessageEvent<WorkerMessage>) => {
+        const request = this.pending.get(data.id);
+        if (!request) {
+          return;
         }
+        if (data.type === 'qwen-progress') {
+          request.onProgress?.({ loadedBytes: data.loadedBytes ?? 0, totalBytes: data.totalBytes ?? 0 });
+          return;
+        }
+        this.pending.delete(data.id);
+        request.resolve(data);
       };
+      this.worker.onerror = () => this.failWorker();
+      this.worker.onmessageerror = () => this.failWorker();
       return this.worker;
     } catch {
       return null;
     }
   }
 
-  private dispatch<T>(payload: Record<string, unknown>, fallback: () => T): Promise<T> {
+  /** A crashed worker must not leave callers waiting forever: settle them locally and start fresh next time. */
+  private failWorker(): void {
+    this.worker?.terminate();
+    this.worker = null;
+    const stranded = [...this.pending.values()];
+    this.pending.clear();
+    for (const request of stranded) {
+      request.resolve(request.fallback());
+    }
+  }
+
+  private dispatch<T>(
+    payload: Record<string, unknown>,
+    fallback: () => T,
+    onProgress?: (progress: QwenDownloadProgress) => void,
+  ): Promise<T> {
     const worker = this.ensureWorker();
     if (!worker) {
       return Promise.resolve(fallback());
     }
     const id = `w-${++this.seq}`;
     return new Promise<T>((resolve) => {
-      this.pending.set(id, (res) => resolve(res as T));
+      this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress });
       worker.postMessage({ ...payload, id });
     });
   }
@@ -100,16 +153,50 @@ export class MlWorkerClient implements OnDestroy {
     ).then((r) => r.results);
   }
 
-  generateCoachReply(prompt: string): Promise<QwenGenerateOutput> {
+  generateCoachReply(
+    prompt: string,
+    preferredBackend: QwenPreferredBackend = 'AutoWebGpu',
+  ): Promise<QwenGenerateOutput> {
     return this.dispatch<QwenGenerateOutput>(
-      { type: 'qwen-generate', prompt },
+      { type: 'qwen-generate', prompt, preferredBackend },
       () => ({
-        reply:
-          'Breathe in for four counts, hold two, and exhale six before your plank holds. Keep shoulders stacked over elbows and let your pace stay unhurried.',
-        reflection: 'Hebrews 12:1 — run with patience the race set before you.',
-        engine: 'Deterministic fallback',
+        reply: ruleBasedCoachReply(prompt),
+        reflection: QWEN_REFLECTION,
+        engine: DETERMINISTIC_ENGINE,
+        reason: 'The ML Web Worker is unavailable.',
       }),
     );
+  }
+
+  /** Whether Qwen2.5-0.5B-Instruct is really present in this browser's model cache. */
+  qwenCacheStatus(): Promise<QwenCacheStatus> {
+    return this.dispatch<{ cached: QwenCacheStatus }>({ type: 'qwen-status' }, () => ({ cached: null })).then(
+      (r) => r.cached,
+    );
+  }
+
+  /** Downloads Qwen2.5-0.5B-Instruct from Hugging Face into the local cache; the only networked ML call. */
+  downloadQwen(
+    preferredBackend: QwenPreferredBackend,
+    onProgress: (progress: QwenDownloadProgress) => void,
+  ): Promise<QwenOperationOutput> {
+    return this.dispatch<QwenOperationOutput>(
+      { type: 'qwen-download', preferredBackend },
+      () => ({ ok: false, reason: 'The ML Web Worker is unavailable.' }),
+      onProgress,
+    );
+  }
+
+  removeQwen(): Promise<QwenOperationOutput> {
+    return this.dispatch<QwenOperationOutput>({ type: 'qwen-remove' }, () => ({
+      ok: false,
+      reason: 'The ML Web Worker is unavailable.',
+    }));
+  }
+
+  /** True when a dedicated ML worker can run in this environment. */
+  get workerSupported(): boolean {
+    return typeof Worker !== 'undefined';
   }
 
   parseVoiceCommand(transcript: string): Promise<'next-set' | 'pause' | 'resume' | 'finish' | 'none'> {

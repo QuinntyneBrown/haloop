@@ -115,7 +115,7 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
           <article class="chat-msg" role="status">
             <div class="chat-msg__meta">
               <span class="status-dot status-dot--halo" aria-hidden="true"></span>
-              <span>Haloop Coach · Gemini Nano</span>
+              <span>Haloop Coach</span>
             </div>
             <p class="text-muted">Generating on-device…</p>
           </article>
