@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ChromeAiService } from '../../core/ai/chrome-ai.service';
 import { ScriptureService, VerseSearchResult } from '../../core/scripture/scripture.service';
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { HaloopDbService } from '../../core/storage/haloop-db.service';
+import { LIGHT_LOAD_WARM_UP, WorkoutPlanStore } from '../../core/state/workout-plan.store';
 
 interface CoachMessage {
   readonly id: string;
@@ -59,7 +60,19 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
       </div>
     </div>
 
-    @if (sessionInterrupted()) {
+    @if (!historyLoaded()) {
+      <div class="stack" role="status" aria-busy="true" aria-label="Loading conversation" data-testid="coach-loading">
+        <div class="card stack stack--sm">
+          <span class="skeleton skeleton--text" style="width:30%;"></span>
+          <span class="skeleton skeleton--text" style="width:85%;"></span>
+        </div>
+        <div class="card stack stack--sm">
+          <span class="skeleton skeleton--text" style="width:35%;"></span>
+          <span class="skeleton skeleton--text" style="width:92%;"></span>
+          <span class="skeleton skeleton--text" style="width:60%;"></span>
+        </div>
+      </div>
+    } @else if (sessionInterrupted()) {
       <section class="empty" role="alert">
         <h2 class="empty__title">Gemini Nano session interrupted</h2>
         <p class="empty__text">
@@ -103,7 +116,14 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
             }
             @if (msg.showActions) {
               <div class="cluster" style="margin-top:var(--space-1);">
-                <a class="btn btn--sm btn--pill" routerLink="/train">Apply light-load warm-up</a>
+                <button
+                  type="button"
+                  class="btn btn--sm btn--pill"
+                  (click)="applyWarmUp()"
+                  data-testid="coach-apply-warmup"
+                >
+                  Apply light-load warm-up
+                </button>
                 <button type="button" class="btn btn--sm btn--ghost" (click)="openVerseSearch()">
                   Translate verse
                 </button>
@@ -250,8 +270,11 @@ export class CoachPageComponent {
   private readonly chromeAi = inject(ChromeAiService);
   private readonly prefs = inject(PreferencesStore);
   private readonly db = inject(HaloopDbService);
+  private readonly plan = inject(WorkoutPlanStore);
+  private readonly router = inject(Router);
 
   protected readonly promptText = signal<string>('');
+  protected readonly historyLoaded = signal<boolean>(false);
   protected readonly submitting = signal<boolean>(false);
   protected readonly streamingText = signal<string>('');
   protected readonly sessionInterrupted = signal<boolean>(false);
@@ -266,14 +289,23 @@ export class CoachPageComponent {
   }
 
   private async loadHistory(): Promise<void> {
-    const saved = await this.db.get<CoachMessage[]>('coachMessages');
-    if (saved && saved.length > 0) {
-      this.messages.set(saved);
+    try {
+      const saved = await this.db.get<CoachMessage[]>('coachMessages');
+      if (saved && saved.length > 0) {
+        this.messages.set(saved);
+      }
+    } finally {
+      this.historyLoaded.set(true);
     }
   }
 
   protected seedStarterPrompt(): void {
     this.promptText.set('Can you give me a 2-minute breath prayer before I start my plank holds?');
+  }
+
+  protected applyWarmUp(): void {
+    this.plan.apply(LIGHT_LOAD_WARM_UP);
+    void this.router.navigateByUrl('/train');
   }
 
   protected restartSession(): void {
