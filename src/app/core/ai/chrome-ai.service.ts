@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { PreferencesStore } from '../state/preferences.store';
 import { MlWorkerClient } from './ml-worker.client';
 
 interface PromptSessionLike {
@@ -32,6 +33,7 @@ interface ChromeAiGlobal {
 @Injectable({ providedIn: 'root' })
 export class ChromeAiService {
   private readonly worker = inject(MlWorkerClient);
+  private readonly prefs = inject(PreferencesStore);
   private promptSession: PromptSessionLike | null = null;
 
   async promptCoach(userPrompt: string): Promise<{ text: string; reflection: string; engine: string }> {
@@ -55,11 +57,14 @@ export class ChromeAiService {
       }
     }
 
-    const fallback = await this.worker.generateCoachReply(userPrompt);
+    const fallback = await this.worker.generateCoachReply(
+      userPrompt,
+      this.prefs.preferences().preferredBackend,
+    );
     return {
       text: fallback.reply,
       reflection: fallback.reflection,
-      engine: 'Haloop Coach · Gemini Nano',
+      engine: `Haloop Coach · ${fallback.engine}`,
     };
   }
 

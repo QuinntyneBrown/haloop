@@ -1,15 +1,43 @@
 /// <reference lib="webworker" />
 
+import {
+  QWEN_REFLECTION,
+  QwenDevice,
+  QwenLibrary,
+  QwenPreferredBackend,
+  createQwenEngine,
+} from './qwen-engine';
+
+interface WebGpuLike {
+  requestAdapter(): Promise<{ readonly features: { has(feature: string): boolean } } | null>;
+}
+
 export type WorkerRequest =
   | { id: string; type: 'pose-step'; currentReps: number; targetReps: number; backend: string }
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
-  | { id: string; type: 'qwen-generate'; prompt: string }
+  | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend }
+  | { id: string; type: 'qwen-status' }
+  | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
+  | { id: string; type: 'qwen-remove' }
   | { id: string; type: 'whisper-command'; transcript: string };
 
 export type WorkerResponse =
   | { id: string; type: 'pose-step'; completedReps: number; formScorePercent: number; cue: string; backend: string }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
-  | { id: string; type: 'qwen-generate'; reply: string; reflection: string }
+  | {
+      id: string;
+      type: 'qwen-generate';
+      reply: string;
+      reflection: string;
+      engine: string;
+      device: QwenDevice | null;
+      reason?: string;
+      restart?: true;
+    }
+  | { id: string; type: 'qwen-status'; cached: boolean }
+  | { id: string; type: 'qwen-progress'; loadedBytes: number; totalBytes: number }
+  | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string; restart?: true }
+  | { id: string; type: 'qwen-remove'; ok: boolean; reason?: string }
   | { id: string; type: 'whisper-command'; action: 'next-set' | 'pause' | 'resume' | 'finish' | 'none' };
 
 const CUES = [
@@ -18,6 +46,28 @@ const CUES = [
   'Brace your core at the bottom and stand tall.',
   'Steady breathing — strong hip stability on that rep.',
 ];
+
+/** Small local-only marker store for ML runtime facts about this device (no user data). */
+const ML_STATE_CACHE = 'haloop-ml-state';
+const WEBGPU_REJECTED_KEY = '/haloop-ml-state/qwen-webgpu-rejected';
+
+const qwen = createQwenEngine({
+  // Imported on the first Qwen message only, so pose, search, and voice stay light.
+  loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as QwenLibrary,
+  detectWebGpu: async () => {
+    const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
+    const adapter = await gpu?.requestAdapter();
+    return adapter?.features.has('shader-f16') ?? false;
+  },
+  baseUrl: self.location.href,
+  webGpuVerdict: {
+    isRejected: async () => Boolean(await (await caches.open(ML_STATE_CACHE)).match(WEBGPU_REJECTED_KEY)),
+    setRejected: async (rejected) => {
+      const cache = await caches.open(ML_STATE_CACHE);
+      await (rejected ? cache.put(WEBGPU_REJECTED_KEY, new Response('1')) : cache.delete(WEBGPU_REJECTED_KEY));
+    },
+  },
+});
 
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
@@ -64,19 +114,47 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
     }
 
     case 'qwen-generate': {
-      const lower = data.prompt.toLowerCase();
-      const reply = lower.includes('plank') || lower.includes('breath')
-        ? 'Breathe in for four counts, hold two, and exhale six before your plank holds. Keep shoulders stacked over elbows and let your pace stay unhurried.'
-        : lower.includes('sore') || lower.includes('tight') || lower.includes('calf')
-          ? 'Keep today’s load 20% lighter, add 90 seconds of slow ankle rocks before set one, and prioritize full range of motion.'
-          : 'Focus on unhurried tempo (3-1-1), clean posture, and steady breathing across every working set today.';
-      const res: WorkerResponse = {
-        id: data.id,
-        type: 'qwen-generate',
-        reply,
-        reflection: 'Hebrews 12:1 — run with patience the race set before you.',
-      };
-      postMessage(res);
+      void qwen.generate(data.prompt, data.preferredBackend ?? 'AutoWebGpu').then((result) => {
+        if (result.reason) {
+          // Diagnostic only: explains why on-device Qwen was not used. Never includes the prompt.
+          console.info(`[Haloop] Qwen2.5-0.5B-Instruct unavailable, using deterministic reply: ${result.reason}`);
+        }
+        const res: WorkerResponse = { id: data.id, type: 'qwen-generate', reflection: QWEN_REFLECTION, ...result };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'qwen-status': {
+      void qwen.status().then((cached) => {
+        const res: WorkerResponse = { id: data.id, type: 'qwen-status', cached };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'qwen-download': {
+      void qwen
+        .download(data.preferredBackend ?? 'AutoWebGpu', (progress) => {
+          const event: WorkerResponse = { id: data.id, type: 'qwen-progress', ...progress };
+          postMessage(event);
+        })
+        .then((result) => {
+          if (!result.ok) {
+            // Diagnostic only: explains why the model could not be cached on this device.
+            console.info(`[Haloop] Qwen2.5-0.5B-Instruct download failed: ${result.reason ?? 'unknown reason'}`);
+          }
+          const res: WorkerResponse = { id: data.id, type: 'qwen-download', ...result };
+          postMessage(res);
+        });
+      break;
+    }
+
+    case 'qwen-remove': {
+      void qwen.remove().then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'qwen-remove', ...result };
+        postMessage(res);
+      });
       break;
     }
 

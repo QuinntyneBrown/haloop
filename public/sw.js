@@ -1,4 +1,5 @@
-const CACHE_NAME = 'haloop-shell-v1';
+const CACHE_PREFIX = 'haloop-shell-';
+const CACHE_NAME = `${CACHE_PREFIX}v1`;
 const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -11,7 +12,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
+      // Only retire stale app-shell caches. Other caches on this origin hold the user's downloaded
+      // on-device models (Transformers.js `transformers-cache`) and must survive shell updates.
+      Promise.all(
+        keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map((k) => caches.delete(k)),
+      ),
     ),
   );
   self.clients.claim();

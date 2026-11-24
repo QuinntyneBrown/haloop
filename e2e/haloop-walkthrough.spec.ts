@@ -90,6 +90,8 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
   await page.getByTestId('verse-insert-btn').first().click();
   await page.getByTestId('coach-send').click();
   await expect(page.getByText('Hebrews 12:1 — run with patience')).toBeVisible();
+  // Gemini Nano is absent and Qwen2.5-0.5B-Instruct is not cached here, so the reply is the labelled last resort.
+  await expect(page.getByText('Haloop Coach · Deterministic fallback')).toBeVisible();
   await page.waitForTimeout(600);
 
   // 6. Web Bluetooth Devices (/devices) & Pair dialog + Toast (L2-018, L2-019, L2-020)
@@ -114,14 +116,17 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
   await page.getByTestId('chrome-flags-recheck').click();
   await page.waitForTimeout(400);
 
-  await page.getByTestId('ailab-download-qwen').click();
-  await expect(page.getByText('766 MB cached')).toBeVisible();
-  await page.waitForTimeout(500);
-
-  await page.getByTestId('ailab-remove-qwen').click();
+  // The Qwen2.5-0.5B-Instruct row performs a real ~480 MB Hugging Face download, so this hermetic walkthrough
+  // exercises the Remove and Download flows on a core model and leaves the Coach fallback uncached.
+  await expect(page.getByTestId('ailab-download-qwen')).toBeVisible();
+  await page.getByTestId('ailab-remove-minilm').click();
   await expect(page.getByTestId('remove-model-dialog')).toBeVisible();
   await page.waitForTimeout(400);
   await page.getByTestId('remove-model-confirm').click();
+  await expect(page.getByText('263 MB cached')).toBeVisible();
+  await page.waitForTimeout(500);
+
+  await page.getByTestId('ailab-download-minilm').click();
   await expect(page.getByText('286 MB cached')).toBeVisible();
   await page.waitForTimeout(500);
 
