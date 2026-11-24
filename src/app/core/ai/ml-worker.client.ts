@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
+import type { PoseKeypoint, VitPoseDevice } from '../../workers/vitpose-engine';
 import { DETERMINISTIC_ENGINE, QWEN_REFLECTION, ruleBasedCoachReply } from '../../workers/qwen-engine';
 
 export interface PoseStepOutput {
@@ -6,6 +7,14 @@ export interface PoseStepOutput {
   readonly formScorePercent: number;
   readonly cue: string;
   readonly backend: string;
+}
+
+export interface PoseFrameOutput {
+  /** 17 COCO keypoints in frame pixel coordinates, or `null` when pose estimation is unavailable. */
+  readonly keypoints: readonly PoseKeypoint[] | null;
+  readonly device: VitPoseDevice | null;
+  readonly inferenceMs: number;
+  readonly reason?: string;
 }
 
 export interface WorkerSearchOutput {
@@ -139,6 +148,7 @@ export class MlWorkerClient implements OnDestroy {
     fallback: () => T,
     onProgress?: (progress: QwenDownloadProgress) => void,
     onChunk?: (chunk: string) => void,
+    transfer: Transferable[] = [],
   ): Promise<T> {
     const worker = this.ensureWorker();
     if (!worker) {
@@ -147,8 +157,30 @@ export class MlWorkerClient implements OnDestroy {
     const id = `w-${++this.seq}`;
     return new Promise<T>((resolve) => {
       this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress, onChunk, payload, retried: false });
-      worker.postMessage({ ...payload, id });
+      worker.postMessage({ ...payload, id }, transfer);
     });
+  }
+
+  /**
+   * Runs VitPose on one camera frame. The bitmap is transferred (zero-copy) to the worker and never leaves
+   * the browser (L2-027, L2-030). Resolves with `keypoints: null` when pose estimation is unavailable.
+   */
+  detectPose(bitmap: ImageBitmap, preferredBackend: QwenPreferredBackend = 'AutoWebGpu'): Promise<PoseFrameOutput> {
+    return this.dispatch<PoseFrameOutput>(
+      { type: 'pose-frame', bitmap, preferredBackend },
+      () => {
+        bitmap.close();
+        return { keypoints: null, device: null, inferenceMs: 0, reason: 'The ML Web Worker is unavailable.' };
+      },
+      undefined,
+      undefined,
+      [bitmap],
+    );
+  }
+
+  /** Releases the pose model's memory (e.g. when the camera stops). */
+  disposePose(): Promise<void> {
+    return this.dispatch<unknown>({ type: 'pose-dispose' }, () => undefined).then(() => undefined);
   }
 
   stepPose(currentReps: number, targetReps: number, backend: string): Promise<PoseStepOutput> {

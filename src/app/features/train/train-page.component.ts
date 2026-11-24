@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MlWorkerClient } from '../../core/ai/ml-worker.client';
@@ -6,6 +15,8 @@ import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
 import { validateReflectionNote } from '../../core/security/sanitize';
+import { SKELETON_EDGES, SquatRepTracker } from '../../core/pose/pose-math';
+import { PoseFrameUpdate, PoseSession, mapKeypointToDisplay } from '../../core/pose/pose-session';
 
 type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
 
@@ -72,6 +83,18 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
       </section>
     } @else {
       <section class="camera-stage" aria-label="Live pose estimation camera preview">
+        @if (cameraActive()) {
+          <video
+            #video
+            class="camera-stage__video"
+            autoplay
+            playsinline
+            muted
+            aria-label="Local camera preview"
+            data-testid="train-video"
+          ></video>
+          <canvas #overlay class="camera-stage__overlay" aria-hidden="true" data-testid="train-pose-overlay"></canvas>
+        }
         <div class="camera-stage__hud">
           <span class="camera-stage__pill">
             <span class="status-dot status-dot--live" aria-hidden="true"></span>
@@ -95,6 +118,9 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
               </svg>
               “Next set” ready
             </span>
+            @if (poseStatus(); as status) {
+              <span class="camera-stage__pill" role="status" data-testid="train-pose-status">{{ status }}</span>
+            }
           </div>
         </div>
         <div class="camera-stage__center">
@@ -245,7 +271,23 @@ export class TrainPageComponent implements OnDestroy {
   protected readonly noteError = signal<string | null>(null);
   protected readonly saving = signal<boolean>(false);
 
+  protected readonly poseStatus = signal<string | null>(null);
+
+  private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
+  private readonly overlayRef = viewChild<ElementRef<HTMLCanvasElement>>('overlay');
   private mediaStream: MediaStream | null = null;
+  private poseSession: PoseSession | null = null;
+  private resumeCamera = false;
+
+  constructor() {
+    // Start pose estimation once the <video> element exists for an active stream.
+    effect(() => {
+      const video = this.videoRef()?.nativeElement;
+      if (video && this.mediaStream && !this.poseSession) {
+        this.startPose(video, this.mediaStream);
+      }
+    });
+  }
 
   private readonly timerId = setInterval(() => {
     if (this.phase() === 'active') {
@@ -256,6 +298,86 @@ export class TrainPageComponent implements OnDestroy {
   ngOnDestroy(): void {
     clearInterval(this.timerId);
     this.stopMediaStream();
+    void this.mlWorker.disposePose();
+  }
+
+  private startPose(video: HTMLVideoElement, stream: MediaStream): void {
+    video.srcObject = stream;
+    void Promise.resolve(video.play()).catch(() => undefined);
+    const tracker = new SquatRepTracker(12, this.reps());
+    this.poseStatus.set('Loading VitPose…');
+    this.poseSession = new PoseSession({
+      video,
+      tracker,
+      detect: (bitmap) => this.mlWorker.detectPose(bitmap, this.prefs.preferences().preferredBackend),
+      onUpdate: (update) => this.onPoseUpdate(video, update),
+    });
+    this.poseSession.start();
+  }
+
+  private onPoseUpdate(video: HTMLVideoElement, update: PoseFrameUpdate): void {
+    if (this.phase() !== 'active') {
+      return;
+    }
+    if (!update.keypoints) {
+      this.poseStatus.set('Pose model unavailable — use + Count rep');
+      this.drawSkeleton(video, null, update);
+      return;
+    }
+    const backend = update.device === 'webgpu' ? 'WebGPU' : 'WASM CPU';
+    this.poseStatus.set(`VitPose ${backend} · ${Math.round(update.fps)} fps`);
+    if (update.feedback) {
+      this.reps.set(update.feedback.reps);
+      if (update.feedback.formScorePercent > 0) {
+        this.formScore.set(update.feedback.formScorePercent);
+      }
+      this.activeCue.set(update.feedback.cue);
+    }
+    this.drawSkeleton(video, update.keypoints, update);
+  }
+
+  private drawSkeleton(
+    video: HTMLVideoElement,
+    keypoints: PoseFrameUpdate['keypoints'],
+    update: PoseFrameUpdate,
+  ): void {
+    const canvas = this.overlayRef()?.nativeElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) {
+      return;
+    }
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!keypoints) {
+      return;
+    }
+    const style = getComputedStyle(canvas);
+    const halo = style.getPropertyValue('--color-halo').trim() || '#f5b301';
+    const map = (i: number) =>
+      mapKeypointToDisplay(keypoints[i], update.crop, { width: video.videoWidth, height: video.videoHeight }, canvas);
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = halo;
+    for (const [a, b] of SKELETON_EDGES) {
+      if (keypoints[a].score < 0.3 || keypoints[b].score < 0.3) continue;
+      const pa = map(a);
+      const pb = map(b);
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = halo;
+    keypoints.forEach((kp, i) => {
+      if (kp.score < 0.3) return;
+      const p = map(i);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 
   protected backendLabel(): string {
@@ -280,7 +402,10 @@ export class TrainPageComponent implements OnDestroy {
     }
     try {
       this.stopMediaStream();
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: false,
+      });
       this.cameraActive.set(true);
       this.phase.set('active');
     } catch {
@@ -300,10 +425,17 @@ export class TrainPageComponent implements OnDestroy {
 
   protected pause(): void {
     this.phase.set('paused');
+    // Release the camera while paused so the indicator turns off (L2-009).
+    this.resumeCamera = this.cameraActive();
+    this.stopMediaStream();
   }
 
   protected resume(): void {
     this.phase.set('active');
+    if (this.resumeCamera) {
+      this.resumeCamera = false;
+      void this.requestCamera();
+    }
   }
 
   protected openFinishDialog(): void {
@@ -350,6 +482,11 @@ export class TrainPageComponent implements OnDestroy {
   }
 
   private stopMediaStream(): void {
+    if (this.poseSession) {
+      this.poseSession.stop();
+      this.poseSession = null;
+    }
+    this.poseStatus.set(null);
     if (this.mediaStream) {
       for (const track of this.mediaStream.getTracks()) {
         track.stop();
