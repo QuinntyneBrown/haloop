@@ -3,7 +3,7 @@
 // Description: Verify dedicated ML Web Worker client (including on-device Qwen2.5-0.5B-Instruct fallback wiring), Chrome Built-in AI fallback adapter, and BLE Heart Rate / Battery GATT payload parsers.
 
 import { TestBed } from '@angular/core/testing';
-import { ChromeAiService } from './chrome-ai.service';
+import { ChromeAiService, GeminiSessionInterruptedError } from './chrome-ai.service';
 import { MlWorkerClient } from './ml-worker.client';
 import {
   parseBleBatteryLevel,
@@ -240,5 +240,59 @@ describe('ML Worker, Chrome AI & BLE GATT Adapters', () => {
 
     const bat = new DataView(new Uint8Array([88]).buffer);
     expect(parseBleBatteryLevel(bat)).toBe(88);
+  });
+});
+
+describe('Gemini Nano session recovery', () => {
+  let chromeAi: ChromeAiService;
+  let creates = 0;
+  let failNext = false;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    chromeAi = TestBed.inject(ChromeAiService);
+    creates = 0;
+    failNext = false;
+    vi.stubGlobal('LanguageModel', {
+      create: async () => {
+        creates += 1;
+        return {
+          prompt: async () => {
+            if (failNext) throw new DOMException('session destroyed', 'InvalidStateError');
+            return 'Keep goblet squats light today.';
+          },
+        };
+      },
+    });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reuses one session across prompts and creates a fresh one after resetPromptSession() (L2-012)', async () => {
+    await chromeAi.promptCoach('One');
+    await chromeAi.promptCoach('Two');
+    expect(creates).toBe(1);
+
+    chromeAi.resetPromptSession();
+    await chromeAi.promptCoach('Three');
+    expect(creates).toBe(2);
+  });
+
+  it('throws GeminiSessionInterruptedError when a working session is recycled, then recovers (L2-012)', async () => {
+    await chromeAi.promptCoach('One');
+    failNext = true;
+
+    await expect(chromeAi.promptCoach('Two')).rejects.toBeInstanceOf(GeminiSessionInterruptedError);
+
+    failNext = false;
+    const recovered = await chromeAi.promptCoach('Three');
+    expect(recovered.engine).toBe('Haloop Coach · Gemini Nano');
+    expect(creates).toBe(2);
+  });
+
+  it('falls back to the local engine when the very first Gemini prompt fails (L2-012)', async () => {
+    failNext = true;
+    const reply = await chromeAi.promptCoach('Give me a breath prayer before plank holds');
+    expect(reply.engine).not.toContain('Gemini Nano');
   });
 });

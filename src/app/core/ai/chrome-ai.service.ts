@@ -9,6 +9,14 @@ interface PromptSessionLike {
 
 const ECHO_STUB = 'On-device model is not available in Chromium';
 
+/** Chrome recycled a Gemini Nano session that was already in use; the user can restart it or open AI Lab. */
+export class GeminiSessionInterruptedError extends Error {
+  constructor() {
+    super('The Gemini Nano Prompt API session was interrupted.');
+    this.name = 'GeminiSessionInterruptedError';
+  }
+}
+
 interface SummarizerLike {
   summarize(input: string): Promise<string>;
 }
@@ -45,6 +53,7 @@ export class ChromeAiService {
   ): Promise<{ text: string; reflection: string; engine: string }> {
     const g = globalThis as unknown as ChromeAiGlobal;
     if (g.LanguageModel) {
+      const reusedSession = this.promptSession !== null;
       try {
         this.promptSession ??= await g.LanguageModel.create({
           systemPrompt:
@@ -59,7 +68,12 @@ export class ChromeAiService {
           };
         }
       } catch {
-        // Fall through to local Web Worker fallback.
+        if (reusedSession) {
+          // A session that worked before and now fails was recycled by Chrome: surface it so the UI can recover.
+          this.promptSession = null;
+          throw new GeminiSessionInterruptedError();
+        }
+        // First-use failure: fall through to the local Web Worker fallback.
       }
     }
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Gemini Nano session recovery: a recycled in-use Prompt API session now raises `GeminiSessionInterruptedError` so Coach shows `Restart session` / `Open AI Lab`; Vitest and Playwright acceptance tests cover streaming, the Chromium stub fallback, `resetPromptSession()`, and recovery (#4).
 - Coach shows the loading skeleton until persisted messages load from IndexedDB, and `Apply light-load warm-up` now hands a structured adjustment (−20% load, 90 s ankle rocks) to the Train page via `WorkoutPlanStore` before navigating to `/train` (#3).
 - Coach replies now stream token-by-token: `LanguageModel.promptStreaming()` for Gemini Nano (echo stub never shown) and `TextStreamer` chunks from the Qwen2.5-0.5B worker, rendered live as escaped text in the in-progress bubble (#2).
 - Root `README.md` aligned with the expected on-device AI, WebGPU, and Web Bluetooth final implementation.
