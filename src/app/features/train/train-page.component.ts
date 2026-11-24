@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MlWorkerClient } from '../../core/ai/ml-worker.client';
 import { CueSpeakerService } from '../../core/audio/cue-speaker.service';
+import { VoiceCommand, VoiceCommandService } from '../../core/audio/voice-command.service';
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
@@ -35,7 +36,7 @@ const AUDIO_ONLY_CUES: readonly string[] = [
   template: `
     <div class="cluster cluster--between">
       <div>
-        <p class="overline">Morning Strength &amp; Mobility · Set 2 of 3</p>
+        <p class="overline">Morning Strength &amp; Mobility · Set {{ setNumber() }} of {{ totalSets }}</p>
         <p class="text-muted" style="margin-top:var(--space-1);">
           Goblet squats · VitPose {{ backendLabel() }} (30 fps) · Whisper voice commands listening
         </p>
@@ -119,15 +120,28 @@ const AUDIO_ONLY_CUES: readonly string[] = [
               </svg>
               {{ heartRate() }} bpm · Zone 3
             </span>
-            <span class="camera-stage__pill">
-              <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-              “Next set” ready
-            </span>
+            @if (voice.state() === 'listening') {
+              <span class="camera-stage__pill" role="status" data-testid="train-voice-status">
+                <span class="status-dot status-dot--live" aria-hidden="true"></span>
+                Listening · say “Next set”, “Pause”, “Resume” or “Finish”
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="camera-stage__pill"
+                (click)="enableVoice()"
+                [disabled]="voice.state() === 'starting' || voice.state() === 'unsupported'"
+                data-testid="train-enable-voice"
+              >
+                <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+                {{ voiceButtonLabel() }}
+              </button>
+            }
             @if (poseStatus(); as status) {
               <span class="camera-stage__pill" role="status" data-testid="train-pose-status">{{ status }}</span>
             }
@@ -263,6 +277,7 @@ const AUDIO_ONLY_CUES: readonly string[] = [
 export class TrainPageComponent implements OnDestroy {
   protected readonly plan = inject(WorkoutPlanStore);
   private readonly speaker = inject(CueSpeakerService);
+  protected readonly voice = inject(VoiceCommandService);
   private readonly history = inject(WorkoutHistoryStore);
   private readonly mlWorker = inject(MlWorkerClient);
   private readonly prefs = inject(PreferencesStore);
@@ -283,11 +298,14 @@ export class TrainPageComponent implements OnDestroy {
   protected readonly saving = signal<boolean>(false);
 
   protected readonly poseStatus = signal<string | null>(null);
+  protected readonly setNumber = signal<number>(2);
+  protected readonly totalSets = 3;
 
   private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
   private readonly overlayRef = viewChild<ElementRef<HTMLCanvasElement>>('overlay');
   private mediaStream: MediaStream | null = null;
   private poseSession: PoseSession | null = null;
+  private tracker: SquatRepTracker | null = null;
   private resumeCamera = false;
   private audioOnlyTimer: ReturnType<typeof setInterval> | null = null;
   private audioOnlyIndex = 0;
@@ -312,6 +330,7 @@ export class TrainPageComponent implements OnDestroy {
     clearInterval(this.timerId);
     this.stopAudioOnlyCues();
     this.speaker.mute();
+    this.voice.stop();
     this.stopMediaStream();
     void this.mlWorker.disposePose();
   }
@@ -320,6 +339,7 @@ export class TrainPageComponent implements OnDestroy {
     video.srcObject = stream;
     void Promise.resolve(video.play()).catch(() => undefined);
     const tracker = new SquatRepTracker(12, this.reps());
+    this.tracker = tracker;
     this.poseStatus.set('Loading VitPose…');
     this.poseSession = new PoseSession({
       video,
@@ -463,7 +483,66 @@ export class TrainPageComponent implements OnDestroy {
     }
   }
 
+  protected voiceButtonLabel(): string {
+    switch (this.voice.state()) {
+      case 'starting':
+        return 'Starting microphone…';
+      case 'blocked':
+        return 'Microphone blocked — try again';
+      case 'unsupported':
+        return 'Voice commands unsupported';
+      default:
+        return 'Enable voice commands';
+    }
+  }
+
+  /** Opens the microphone for Whisper voice commands; only ever called from a click. */
+  protected async enableVoice(): Promise<void> {
+    await this.voice.start((command) => this.onVoiceCommand(command));
+  }
+
+  private onVoiceCommand(command: VoiceCommand): void {
+    switch (command) {
+      case 'pause':
+        if (this.phase() === 'active') this.pauseSession(true);
+        break;
+      case 'resume':
+        if (this.phase() === 'paused') this.resume();
+        break;
+      case 'next-set':
+        if (this.phase() === 'active') this.nextSet();
+        break;
+      case 'finish':
+        if (!this.finishDialogOpen()) this.openFinishDialog();
+        break;
+    }
+  }
+
+  private restartTracker(): void {
+    this.tracker?.reset(0);
+  }
+
+  /** Starts the next set: resets the rep count and tracker. */
+  protected nextSet(): void {
+    if (this.setNumber() >= this.totalSets) {
+      this.openFinishDialog();
+      return;
+    }
+    this.setNumber.update((n) => n + 1);
+    this.reps.set(0);
+    this.activeCue.set('Set ' + this.setNumber() + ' — chest proud, smooth descent.');
+    this.restartTracker();
+  }
+
   protected pause(): void {
+    this.pauseSession(false);
+  }
+
+  /** A spoken pause keeps the microphone open so "Resume" can be heard; a manual pause releases it. */
+  private pauseSession(keepMicrophone: boolean): void {
+    if (!keepMicrophone) {
+      this.voice.stop();
+    }
     this.phase.set('paused');
     this.speaker.mute();
     // Release the camera while paused so the indicator turns off (L2-009).
@@ -514,6 +593,7 @@ export class TrainPageComponent implements OnDestroy {
         devotionalNote: this.reflectionNote().trim() || 'Completed on-device strength session.',
         verseReference: 'Isaiah 40:31 · KJV',
       });
+      this.voice.stop();
       this.stopMediaStream();
       this.finishDialogOpen.set(false);
       await this.router.navigate(['/history', id]);

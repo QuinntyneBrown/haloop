@@ -8,6 +8,7 @@ import {
   createQwenEngine,
 } from './qwen-engine';
 import { KokoroLibrary, createTtsEngine } from './tts-engine';
+import { SttDevice, SttLibrary, SttPreferredBackend, createSttEngine } from './stt-engine';
 import { PoseKeypoint, VitPoseDevice, VitPoseLibrary, VitPosePreferredBackend, createVitPoseEngine } from './vitpose-engine';
 
 interface WebGpuLike {
@@ -20,6 +21,7 @@ export type WorkerRequest =
   | { id: string; type: 'pose-frame'; bitmap: ImageBitmap; preferredBackend?: VitPosePreferredBackend }
   | { id: string; type: 'pose-dispose' }
   | { id: string; type: 'tts-speak'; text: string; voice?: string }
+  | { id: string; type: 'stt-transcribe'; samples: Float32Array; preferredBackend?: SttPreferredBackend }
   | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend; stream?: boolean }
   | { id: string; type: 'qwen-status' }
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
@@ -38,6 +40,7 @@ export type WorkerResponse =
     }
   | { id: string; type: 'pose-dispose' }
   | { id: string; type: 'tts-speak'; samples: Float32Array | null; sampleRate: number; reason?: string }
+  | { id: string; type: 'stt-transcribe'; text: string | null; device: SttDevice | null; reason?: string }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
   | {
       id: string;
@@ -102,8 +105,29 @@ const tts = createTtsEngine({
   },
 });
 
+const stt = createSttEngine({
+  loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as SttLibrary,
+  detectWebGpu: async () => {
+    const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
+    return (await gpu?.requestAdapter()) != null;
+  },
+  // Transformers.js stores downloaded weights in this Cache Storage bucket.
+  isCached: async () => {
+    const cache = await caches.open('transformers-cache');
+    return (await cache.keys()).some((request) => request.url.includes('whisper-base'));
+  },
+});
+
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
+    case 'stt-transcribe': {
+      void stt.transcribe(data.samples, data.preferredBackend ?? 'AutoWebGpu').then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'stt-transcribe', ...result };
+        postMessage(res);
+      });
+      break;
+    }
+
     case 'tts-speak': {
       void tts.synthesize(data.text, data.voice).then((result) => {
         const res: WorkerResponse = { id: data.id, type: 'tts-speak', ...result };
