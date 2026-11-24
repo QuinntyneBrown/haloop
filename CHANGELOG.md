@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Coach: semantic Scripture search now embeds queries with `Xenova/all-MiniLM-L6-v2` inside the ML worker and ranks verses by cosine similarity against a verse-vector index that is built once, persisted in Cache Storage and reused offline; cache-only (no network), WebGPU→WASM fallback, keyword fallback while the model is not downloaded (#13).
 - Devices: loading skeleton, `No devices linked yet` empty state (with Forget), `Bluetooth adapter is turned off` error with working `Check again`, `Pairing timed out` state with proximity guidance and retry, automatic low-battery (`<= 15%`) warning toast, and a `Reconnect` action on disconnect toasts (#12).
 - Devices: pairing now calls `navigator.bluetooth.requestDevice()` from the click, connects GATT and streams Heart Rate (`0x2A37`), Running Speed & Cadence (`0x2A53`) and Battery (`0x2A19`) notifications into `TelemetryStore` locally; paired-device labels persist in IndexedDB (devices restore as Disconnected after a reload), reconnect reuses the live GATT link, and an unexpected `gattserverdisconnected` marks the device Disconnected (#11).
 - Train: live heart rate, Zones 1–5 and cadence from `TelemetryStore` bind into the camera HUD and KPI cards; a sensor dropping mid-workout clears only its own readings without interrupting rep counting or saving, and saved sessions record the true session average (`0`/dash when no sensor) (#9).

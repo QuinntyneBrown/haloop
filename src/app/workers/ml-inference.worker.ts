@@ -8,6 +8,7 @@ import {
   createQwenEngine,
 } from './qwen-engine';
 import { KokoroLibrary, createTtsEngine } from './tts-engine';
+import { EmbedDevice, EmbedLibrary, EmbedPreferredBackend, VectorIndex, createEmbedEngine } from './embed-engine';
 import { SttDevice, SttLibrary, SttPreferredBackend, createSttEngine } from './stt-engine';
 import { PoseKeypoint, VitPoseDevice, VitPoseLibrary, VitPosePreferredBackend, createVitPoseEngine } from './vitpose-engine';
 
@@ -17,7 +18,13 @@ interface WebGpuLike {
 
 export type WorkerRequest =
   | { id: string; type: 'pose-step'; currentReps: number; targetReps: number; backend: string }
-  | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
+  | {
+      id: string;
+      type: 'semantic-search';
+      query: string;
+      corpus: readonly { reference: string; text: string; themes: readonly string[] }[];
+      preferredBackend?: EmbedPreferredBackend;
+    }
   | { id: string; type: 'pose-frame'; bitmap: ImageBitmap; preferredBackend?: VitPosePreferredBackend }
   | { id: string; type: 'pose-dispose' }
   | { id: string; type: 'ping' }
@@ -43,7 +50,15 @@ export type WorkerResponse =
   | { id: string; type: 'ping'; ok: true }
   | { id: string; type: 'tts-speak'; samples: Float32Array | null; sampleRate: number; reason?: string }
   | { id: string; type: 'stt-transcribe'; text: string | null; device: SttDevice | null; reason?: string }
-  | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
+  | {
+      id: string;
+      type: 'semantic-search';
+      results: readonly { reference: string; text: string; score: number }[];
+      /** `semantic` = MiniLM cosine ranking; `lexical` = keyword fallback while the model is unavailable. */
+      method: 'semantic' | 'lexical';
+      device: EmbedDevice | null;
+      reason?: string;
+    }
   | {
       id: string;
       type: 'qwen-generate';
@@ -120,6 +135,62 @@ const stt = createSttEngine({
   },
 });
 
+const INDEX_CACHE_PREFIX = '/haloop-ml-state/kjv-index/';
+
+const embed = createEmbedEngine({
+  loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as EmbedLibrary,
+  detectWebGpu: async () => {
+    const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
+    return (await gpu?.requestAdapter()) != null;
+  },
+  isCached: async () => {
+    const cache = await caches.open('transformers-cache');
+    return (await cache.keys()).some((request) => request.url.includes('all-MiniLM-L6-v2'));
+  },
+  // The precomputed verse vectors live next to the model so later sessions only embed the query.
+  indexStore: {
+    load: async (fingerprint): Promise<VectorIndex | null> => {
+      const cache = await caches.open(ML_STATE_CACHE);
+      const [vectors, meta] = await Promise.all([
+        cache.match(`${INDEX_CACHE_PREFIX}${fingerprint}.bin`),
+        cache.match(`${INDEX_CACHE_PREFIX}${fingerprint}.json`),
+      ]);
+      if (!vectors || !meta) return null;
+      const { dimension, references } = (await meta.json()) as { dimension: number; references: string[] };
+      return { fingerprint, dimension, references, vectors: new Float32Array(await vectors.arrayBuffer()) };
+    },
+    save: async (index): Promise<void> => {
+      const cache = await caches.open(ML_STATE_CACHE);
+      await cache.put(`${INDEX_CACHE_PREFIX}${index.fingerprint}.bin`, new Response(index.vectors.slice().buffer));
+      await cache.put(
+        `${INDEX_CACHE_PREFIX}${index.fingerprint}.json`,
+        new Response(JSON.stringify({ dimension: index.dimension, references: index.references })),
+      );
+    },
+  },
+});
+
+function lexicalSearch(
+  query: string,
+  corpus: readonly { reference: string; text: string; themes: readonly string[] }[],
+): { reference: string; text: string; score: number }[] {
+  const tokens = query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 1);
+  const scored = corpus.map((v) => {
+    const hay = `${v.reference} ${v.text} ${v.themes.join(' ')}`.toLowerCase();
+    let score = 0;
+    for (const t of tokens) {
+      if (v.themes.includes(t)) score += 3;
+      else if (hay.includes(t)) score += 1.5;
+    }
+    return { reference: v.reference, text: v.text, score };
+  });
+  const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+  return matched.length > 0 ? matched.slice(0, 4) : scored.slice(0, 2);
+}
+
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
     case 'stt-transcribe': {
@@ -191,28 +262,19 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
     }
 
     case 'semantic-search': {
-      const tokens = data.query
-        .toLowerCase()
-        .split(/[^a-z0-9]+/)
-        .filter((t) => t.length > 1);
-
-      const scored = data.corpus.map((v) => {
-        const hay = `${v.reference} ${v.text} ${v.themes.join(' ')}`.toLowerCase();
-        let score = 0;
-        for (const t of tokens) {
-          if (v.themes.includes(t)) score += 3;
-          else if (hay.includes(t)) score += 1.5;
-        }
-        return { reference: v.reference, text: v.text, score };
+      void embed.search(data.query, data.corpus, data.preferredBackend ?? 'AutoWebGpu').then((found) => {
+        const res: WorkerResponse = found.results
+          ? { id: data.id, type: 'semantic-search', results: found.results, method: 'semantic', device: found.device }
+          : {
+              id: data.id,
+              type: 'semantic-search',
+              results: lexicalSearch(data.query, data.corpus),
+              method: 'lexical',
+              device: null,
+              reason: found.reason,
+            };
+        postMessage(res);
       });
-
-      const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
-      const res: WorkerResponse = {
-        id: data.id,
-        type: 'semantic-search',
-        results: matched.length > 0 ? matched.slice(0, 4) : scored.slice(0, 2),
-      };
-      postMessage(res);
       break;
     }
 
