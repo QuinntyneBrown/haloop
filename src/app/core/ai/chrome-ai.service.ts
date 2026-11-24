@@ -34,6 +34,7 @@ interface ChromeAiGlobal {
   };
   Translator?: {
     create(opts: { sourceLanguage: string; targetLanguage: string }): Promise<TranslatorLike>;
+    availability?(opts: { sourceLanguage: string; targetLanguage: string }): Promise<'unavailable' | 'downloadable' | 'downloading' | 'available'>;
   };
 }
 
@@ -145,12 +146,24 @@ export class ChromeAiService {
     const g = globalThis as unknown as ChromeAiGlobal;
     if (g.Translator) {
       try {
-        const translator = await g.Translator.create({ sourceLanguage: 'en', targetLanguage });
-        return await translator.translate(text);
+        const pair = { sourceLanguage: 'en', targetLanguage };
+        // A language pair Chrome cannot serve is skipped without prompting a pack download (L2-028).
+        if ((await g.Translator.availability?.(pair)) === 'unavailable') {
+          return fallback;
+        }
+        let translator = this.translators.get(targetLanguage);
+        if (!translator) {
+          translator = g.Translator.create(pair);
+          this.translators.set(targetLanguage, translator);
+          translator.catch(() => this.translators.delete(targetLanguage));
+        }
+        return await (await translator).translate(text);
       } catch {
         return fallback;
       }
     }
     return fallback;
   }
+
+  private readonly translators = new Map<string, Promise<TranslatorLike>>();
 }

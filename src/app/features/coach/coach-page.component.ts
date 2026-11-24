@@ -211,7 +211,7 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
           </div>
 
           <div class="dialog__body stack">
-            <form class="cluster" (ngSubmit)="runVerseSearch()">
+            <form class="cluster" (ngSubmit)="runVerseSearch()" [attr.aria-busy]="verseBusy()">
               <label class="field" style="flex:1;">
                 <span class="field__label">Search KJV index on-device</span>
                 <input
@@ -231,12 +231,19 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
                 type="submit"
                 class="btn btn--primary btn--sm btn--pill"
                 style="align-self:flex-end;"
+                [disabled]="verseBusy()"
                 data-testid="verse-search-submit"
               >
-                Search
+                {{ verseBusy() ? 'Searching…' : 'Search' }}
               </button>
             </form>
 
+            @if (verseBusy()) {
+              <div class="stack stack--sm" role="status" aria-label="Searching Scripture" data-testid="verse-search-busy">
+                <span class="skeleton skeleton--text" style="width:90%;"></span>
+                <span class="skeleton skeleton--text" style="width:75%;"></span>
+              </div>
+            } @else {
             <ul class="list">
               @for (v of verseResults(); track v.reference) {
                 <li class="list__item">
@@ -255,6 +262,7 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
                 </li>
               }
             </ul>
+            }
           </div>
 
           <div class="dialog__footer">
@@ -282,6 +290,8 @@ export class CoachPageComponent {
   protected readonly verseQuery = signal<string>('endurance and patience');
   protected readonly verseError = signal<string | null>(null);
   protected readonly verseResults = signal<readonly VerseSearchResult[]>([]);
+  protected readonly verseBusy = signal<boolean>(false);
+  private verseSearchToken = 0;
   protected readonly messages = signal<readonly CoachMessage[]>(DEFAULT_THREAD);
 
   constructor() {
@@ -356,6 +366,8 @@ export class CoachPageComponent {
   }
 
   protected closeVerseSearch(): void {
+    this.verseSearchToken++;
+    this.verseBusy.set(false);
     this.verseDialogOpen.set(false);
   }
 
@@ -366,12 +378,28 @@ export class CoachPageComponent {
       return;
     }
     this.verseError.set(null);
-    const hits = await this.scripture.searchSemantic(q, this.prefs.preferences().scriptureLanguage);
-    this.verseResults.set(hits);
+    const token = ++this.verseSearchToken;
+    this.verseBusy.set(true);
+    try {
+      const hits = await this.scripture.searchSemantic(q, this.prefs.preferences().scriptureLanguage);
+      // A newer search (or a closed dialog) supersedes this one.
+      if (token === this.verseSearchToken) {
+        this.verseResults.set(hits);
+      }
+    } catch {
+      if (token === this.verseSearchToken) {
+        this.verseResults.set([]);
+        this.verseError.set('Scripture search is unavailable right now. Try again.');
+      }
+    } finally {
+      if (token === this.verseSearchToken) {
+        this.verseBusy.set(false);
+      }
+    }
   }
 
   protected insertVerse(verse: VerseSearchResult): void {
     this.promptText.set(`Reflect on ${verse.reference}: "${verse.text}"`);
-    this.verseDialogOpen.set(false);
+    this.closeVerseSearch();
   }
 }
