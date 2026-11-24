@@ -17,14 +17,10 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
     models = TestBed.inject(ModelRegistryStore);
   });
 
-  it('validates Bluetooth device label, pairs sensor, and emits success toast (L2-019, L2-020)', async () => {
-    const err = await bt.pairSensor('wahoo-tickr-fit', '   ', 'HR armband');
+  it('validates the Bluetooth device label before opening the chooser (L2-019)', async () => {
+    const err = await bt.pairSensor('heart-rate', '   ');
     expect(err).not.toBeNull();
-
-    const ok = await bt.pairSensor('wahoo-tickr-fit', 'Wahoo TICKR Fit', 'HR armband');
-    expect(ok).toBeNull();
-    expect(bt.toast()?.severity).toBe('success');
-    expect(bt.devices().some((d) => d.label === 'Wahoo TICKR Fit')).toBe(true);
+    expect(bt.devices().length).toBe(2);
   });
 
   it('tracks 286 MB cached core models and supports downloading and removing models (L2-022, L2-023, L2-031)', async () => {

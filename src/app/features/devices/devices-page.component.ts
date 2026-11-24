@@ -1,16 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BluetoothDeviceStore } from '../../core/state/bluetooth-device.store';
+import { SensorKind } from '../../core/wearables/web-bluetooth.adapter';
 
-interface NearbySensor {
+interface SensorChoice {
   readonly id: string;
+  readonly kind: SensorKind;
   readonly name: string;
   readonly role: string;
 }
 
-const NEARBY_SENSORS: readonly NearbySensor[] = [
-  { id: 'wahoo-tickr-fit', name: 'Wahoo TICKR Fit', role: 'Heart-rate armband · Strong signal' },
-  { id: 'garmin-hrm-pro', name: 'Garmin HRM-Pro Plus', role: 'Heart-rate & running dynamics' },
+/** The browser's own chooser lists the physical sensors; here the user says what kind of sensor to look for. */
+const SENSOR_CHOICES: readonly SensorChoice[] = [
+  { id: 'heart-rate', kind: 'heart-rate', name: 'Heart-rate strap or armband', role: 'Live BPM and heart-rate zones' },
+  { id: 'running', kind: 'running', name: 'Running watch or cadence sensor', role: 'Live cadence in steps per minute' },
 ];
 
 @Component({
@@ -50,7 +53,7 @@ const NEARBY_SENSORS: readonly NearbySensor[] = [
               <div class="builtin-row__title">{{ device.label }}</div>
               <div class="builtin-row__desc">{{ device.role }}</div>
             </div>
-            <div class="model-row__task">Battery {{ device.batteryPercent }}%</div>
+            <div class="model-row__task">Battery {{ device.batteryPercent > 0 ? device.batteryPercent + '%' : '—' }}</div>
             <div class="model-row__size" [class.text-live]="device.connected" [class.text-muted]="!device.connected">
               {{ device.connected ? 'Connected' : 'Disconnected' }}
             </div>
@@ -59,6 +62,7 @@ const NEARBY_SENSORS: readonly NearbySensor[] = [
                 type="button"
                 class="btn btn--sm btn--pill"
                 (click)="store.toggleConnection(device.id)"
+                [disabled]="store.pairingBusy()"
                 [attr.data-testid]="'device-toggle-' + device.id"
               >
                 {{ device.connected ? 'Disconnect' : 'Reconnect' }}
@@ -103,8 +107,8 @@ const NEARBY_SENSORS: readonly NearbySensor[] = [
 
           <div class="dialog__body stack">
             <fieldset class="stack stack--sm">
-              <legend>Nearby Bluetooth sensors</legend>
-              @for (sensor of nearbySensors; track sensor.id) {
+              <legend>Sensor type</legend>
+              @for (sensor of sensorChoices; track sensor.id) {
                 <label class="choice">
                   <input
                     type="radio"
@@ -196,11 +200,11 @@ const NEARBY_SENSORS: readonly NearbySensor[] = [
 })
 export class DevicesPageComponent {
   protected readonly store = inject(BluetoothDeviceStore);
-  protected readonly nearbySensors = NEARBY_SENSORS;
+  protected readonly sensorChoices = SENSOR_CHOICES;
 
   protected readonly pairDialogOpen = signal<boolean>(false);
-  protected readonly selectedSensorId = signal<string>(NEARBY_SENSORS[0].id);
-  protected readonly deviceLabel = signal<string>(NEARBY_SENSORS[0].name);
+  protected readonly selectedSensorId = signal<string>(SENSOR_CHOICES[0].id);
+  protected readonly deviceLabel = signal<string>('');
   protected readonly labelError = signal<string | null>(null);
 
   protected readonly connectedCount = computed(
@@ -209,8 +213,8 @@ export class DevicesPageComponent {
 
   protected openPairDialog(): void {
     this.labelError.set(null);
-    this.selectedSensorId.set(NEARBY_SENSORS[0].id);
-    this.deviceLabel.set(NEARBY_SENSORS[0].name);
+    this.selectedSensorId.set(SENSOR_CHOICES[0].id);
+    this.deviceLabel.set('');
     this.pairDialogOpen.set(true);
   }
 
@@ -218,14 +222,13 @@ export class DevicesPageComponent {
     this.pairDialogOpen.set(false);
   }
 
-  protected selectSensor(sensor: NearbySensor): void {
+  protected selectSensor(sensor: SensorChoice): void {
     this.selectedSensorId.set(sensor.id);
-    this.deviceLabel.set(sensor.name);
   }
 
   protected async confirmPair(): Promise<void> {
-    const sensor = NEARBY_SENSORS.find((s) => s.id === this.selectedSensorId()) ?? NEARBY_SENSORS[0];
-    const err = await this.store.pairSensor(sensor.id, this.deviceLabel(), sensor.role);
+    const sensor = SENSOR_CHOICES.find((s) => s.id === this.selectedSensorId()) ?? SENSOR_CHOICES[0];
+    const err = await this.store.pairSensor(sensor.kind, this.deviceLabel(), sensor.role);
     this.labelError.set(err);
     if (!err) {
       this.pairDialogOpen.set(false);
