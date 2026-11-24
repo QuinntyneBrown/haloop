@@ -117,7 +117,8 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
               type="checkbox"
               name="kokoroTtsEnabled"
               [ngModel]="kokoroTtsEnabled()"
-              (ngModelChange)="kokoroTtsEnabled.set($event)"
+              (ngModelChange)="setKokoroTts($event)"
+              data-testid="settings-kokoro-toggle"
             />
             <span>Speak live form cues with Kokoro TTS during workouts</span>
           </label>
@@ -151,6 +152,12 @@ export class SettingsPageComponent {
 
   protected fieldError(field: string): string | null {
     return this.prefs.validationErrors().find((e) => e.field === field)?.message ?? null;
+  }
+
+  /** Applies the Kokoro toggle at once so turning it off mutes cues immediately (L2-024). */
+  protected setKokoroTts(enabled: boolean): void {
+    this.kokoroTtsEnabled.set(enabled);
+    void this.prefs.save({ kokoroTtsEnabled: enabled });
   }
 
   protected async onSubmit(): Promise<void> {

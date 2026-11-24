@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Train: spoken coaching cues synthesized locally by Kokoro-82M in the ML worker (`kokoro-js`) and played via Web Audio; the Settings toggle mutes immediately, repeated cues are de-duplicated, and audio-only coaching continues when the camera is blocked (#6).
 - Train: live local camera preview with pose skeleton overlay; frames are transferred as `ImageBitmap` to the ML worker running `onnx-community/vitpose-base-simple` (WebGPU with automatic WASM CPU fallback); rep counts, form score and cues update from joint angles; camera is requested only on a user gesture and every track stops on pause/destroy (#5).
 - Gemini Nano session recovery: a recycled in-use Prompt API session now raises `GeminiSessionInterruptedError` so Coach shows `Restart session` / `Open AI Lab`; Vitest and Playwright acceptance tests cover streaming, the Chromium stub fallback, `resetPromptSession()`, and recovery (#4).
 - Coach shows the loading skeleton until persisted messages load from IndexedDB, and `Apply light-load warm-up` now hands a structured adjustment (−20% load, 90 s ankle rocks) to the Train page via `WorkoutPlanStore` before navigating to `/train` (#3).

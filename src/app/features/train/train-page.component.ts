@@ -11,6 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MlWorkerClient } from '../../core/ai/ml-worker.client';
+import { CueSpeakerService } from '../../core/audio/cue-speaker.service';
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
@@ -19,6 +20,13 @@ import { SKELETON_EDGES, SquatRepTracker } from '../../core/pose/pose-math';
 import { PoseFrameUpdate, PoseSession, mapKeypointToDisplay } from '../../core/pose/pose-session';
 
 type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
+
+const AUDIO_ONLY_CUES: readonly string[] = [
+  'Chest proud, smooth descent.',
+  'Control the tempo: three down, one pause, one up.',
+  'Brace your core and keep your knees tracking over your toes.',
+  'Steady breathing. You are doing great.',
+];
 
 @Component({
   selector: 'app-train-page',
@@ -77,7 +85,9 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
         </p>
         <div class="empty__actions">
           <button type="button" class="btn btn--primary btn--pill" (click)="requestCamera()">Try camera again</button>
-          <button type="button" class="btn btn--pill" (click)="resume()">Continue audio-only</button>
+          <button type="button" class="btn btn--pill" (click)="continueAudioOnly()" data-testid="train-audio-only">
+            Continue audio-only
+          </button>
           <a class="btn btn--pill" routerLink="/lab">Check AI Lab models</a>
         </div>
       </section>
@@ -252,6 +262,7 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
 })
 export class TrainPageComponent implements OnDestroy {
   protected readonly plan = inject(WorkoutPlanStore);
+  private readonly speaker = inject(CueSpeakerService);
   private readonly history = inject(WorkoutHistoryStore);
   private readonly mlWorker = inject(MlWorkerClient);
   private readonly prefs = inject(PreferencesStore);
@@ -278,6 +289,8 @@ export class TrainPageComponent implements OnDestroy {
   private mediaStream: MediaStream | null = null;
   private poseSession: PoseSession | null = null;
   private resumeCamera = false;
+  private audioOnlyTimer: ReturnType<typeof setInterval> | null = null;
+  private audioOnlyIndex = 0;
 
   constructor() {
     // Start pose estimation once the <video> element exists for an active stream.
@@ -297,6 +310,8 @@ export class TrainPageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.timerId);
+    this.stopAudioOnlyCues();
+    this.speaker.mute();
     this.stopMediaStream();
     void this.mlWorker.disposePose();
   }
@@ -332,6 +347,9 @@ export class TrainPageComponent implements OnDestroy {
         this.formScore.set(update.feedback.formScorePercent);
       }
       this.activeCue.set(update.feedback.cue);
+      if (update.feedback.repCompleted) {
+        void this.speaker.speak(update.feedback.cue);
+      }
     }
     this.drawSkeleton(video, update.keypoints, update);
   }
@@ -420,11 +438,34 @@ export class TrainPageComponent implements OnDestroy {
     this.reps.set(res.completedReps);
     this.formScore.set(res.formScorePercent);
     this.activeCue.set(res.cue);
+    void this.speaker.speak(res.cue);
     this.heartRate.update((hr) => Math.min(165, hr + 1));
+  }
+
+  /** Camera blocked: keep coaching with spoken cues only (L2-010). */
+  protected continueAudioOnly(): void {
+    this.phase.set('active');
+    this.stopAudioOnlyCues();
+    const speakNext = (): void => {
+      if (this.phase() !== 'active') return;
+      const cue = AUDIO_ONLY_CUES[this.audioOnlyIndex++ % AUDIO_ONLY_CUES.length];
+      this.activeCue.set(cue);
+      void this.speaker.speak(cue);
+    };
+    speakNext();
+    this.audioOnlyTimer = setInterval(speakNext, 20000);
+  }
+
+  private stopAudioOnlyCues(): void {
+    if (this.audioOnlyTimer !== null) {
+      clearInterval(this.audioOnlyTimer);
+      this.audioOnlyTimer = null;
+    }
   }
 
   protected pause(): void {
     this.phase.set('paused');
+    this.speaker.mute();
     // Release the camera while paused so the indicator turns off (L2-009).
     this.resumeCamera = this.cameraActive();
     this.stopMediaStream();
