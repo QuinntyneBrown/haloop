@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ChromeAiService } from '../../core/ai/chrome-ai.service';
@@ -6,6 +15,7 @@ import { ScriptureService, VerseSearchResult } from '../../core/scripture/script
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { HaloopDbService } from '../../core/storage/haloop-db.service';
 import { LIGHT_LOAD_WARM_UP, WorkoutPlanStore } from '../../core/state/workout-plan.store';
+import { ChatScroll } from './chat-scroll';
 
 interface CoachMessage {
   readonly id: string;
@@ -39,6 +49,7 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
 @Component({
   selector: 'app-coach-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(window:scroll)': 'chatScroll.onScroll()' },
   imports: [FormsModule, RouterLink],
   template: `
     <div class="cluster cluster--between">
@@ -147,7 +158,7 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
       </section>
     }
 
-    <form class="chat-composer" (ngSubmit)="sendMessage()">
+    <form class="chat-composer" #composer (ngSubmit)="sendMessage()">
       <label class="field" style="flex:1;">
         <span class="visually-hidden">Message Haloop Coach</span>
         <input
@@ -280,6 +291,9 @@ export class CoachPageComponent {
   private readonly db = inject(HaloopDbService);
   private readonly plan = inject(WorkoutPlanStore);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly composer = viewChild<ElementRef<HTMLElement>>('composer');
+  protected readonly chatScroll = new ChatScroll(window, () => this.composer()?.nativeElement ?? null);
 
   protected readonly promptText = signal<string>('');
   protected readonly historyLoaded = signal<boolean>(false);
@@ -306,7 +320,14 @@ export class CoachPageComponent {
       }
     } finally {
       this.historyLoaded.set(true);
+      // Opening the conversation lands on the most recent message, without animating.
+      this.followLatest({ force: true, instant: true });
     }
+  }
+
+  /** Scrolls once the new content has rendered; a reader who scrolled up is left where they are. */
+  private followLatest(options: { force?: boolean; instant?: boolean } = {}): void {
+    afterNextRender(() => this.chatScroll.scrollToLatest(options), { injector: this.injector });
   }
 
   protected seedStarterPrompt(): void {
@@ -338,9 +359,14 @@ export class CoachPageComponent {
     this.messages.update((list) => [...list, userMsg]);
     this.promptText.set('');
     this.submitting.set(true);
+    // Sending is the reader's own action: jump to their message and the generating indicator.
+    this.followLatest({ force: true });
 
     try {
-      const response = await this.chromeAi.promptCoach(clean, (text) => this.streamingText.set(text));
+      const response = await this.chromeAi.promptCoach(clean, (text) => {
+        this.streamingText.set(text);
+        this.followLatest();
+      });
       const reply: CoachMessage = {
         id: `c-${Date.now()}`,
         sender: 'coach',
@@ -350,6 +376,7 @@ export class CoachPageComponent {
         reflection: response.reflection,
       };
       this.messages.update((list) => [...list, reply]);
+      this.followLatest();
       await this.db.set('coachMessages', this.messages());
     } catch {
       this.sessionInterrupted.set(true);
