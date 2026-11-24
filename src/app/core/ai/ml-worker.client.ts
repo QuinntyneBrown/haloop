@@ -43,6 +43,7 @@ interface PendingRequest {
   readonly payload: Record<string, unknown>;
   retried: boolean;
   readonly onProgress?: (progress: QwenDownloadProgress) => void;
+  readonly onChunk?: (chunk: string) => void;
 }
 
 interface WorkerMessage {
@@ -50,6 +51,7 @@ interface WorkerMessage {
   readonly type?: string;
   readonly loadedBytes?: number;
   readonly totalBytes?: number;
+  readonly chunk?: string;
   /** The worker's ONNX Runtime is unusable; the request must be replayed on a fresh worker. */
   readonly restart?: boolean;
 }
@@ -82,6 +84,10 @@ export class MlWorkerClient implements OnDestroy {
         }
         if (data.type === 'qwen-progress') {
           request.onProgress?.({ loadedBytes: data.loadedBytes ?? 0, totalBytes: data.totalBytes ?? 0 });
+          return;
+        }
+        if (data.type === 'qwen-chunk') {
+          if (typeof data.chunk === 'string') request.onChunk?.(data.chunk);
           return;
         }
         if (data.restart === true && !request.retried) {
@@ -132,6 +138,7 @@ export class MlWorkerClient implements OnDestroy {
     payload: Record<string, unknown>,
     fallback: () => T,
     onProgress?: (progress: QwenDownloadProgress) => void,
+    onChunk?: (chunk: string) => void,
   ): Promise<T> {
     const worker = this.ensureWorker();
     if (!worker) {
@@ -139,7 +146,7 @@ export class MlWorkerClient implements OnDestroy {
     }
     const id = `w-${++this.seq}`;
     return new Promise<T>((resolve) => {
-      this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress, payload, retried: false });
+      this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress, onChunk, payload, retried: false });
       worker.postMessage({ ...payload, id });
     });
   }
@@ -182,15 +189,18 @@ export class MlWorkerClient implements OnDestroy {
   generateCoachReply(
     prompt: string,
     preferredBackend: QwenPreferredBackend = 'AutoWebGpu',
+    onChunk?: (chunk: string) => void,
   ): Promise<QwenGenerateOutput> {
     return this.dispatch<QwenGenerateOutput>(
-      { type: 'qwen-generate', prompt, preferredBackend },
+      { type: 'qwen-generate', prompt, preferredBackend, stream: onChunk !== undefined },
       () => ({
         reply: ruleBasedCoachReply(prompt),
         reflection: QWEN_REFLECTION,
         engine: DETERMINISTIC_ENGINE,
         reason: 'The ML Web Worker is unavailable.',
       }),
+      undefined,
+      onChunk,
     );
   }
 

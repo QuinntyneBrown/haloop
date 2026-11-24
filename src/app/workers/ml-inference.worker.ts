@@ -15,7 +15,7 @@ interface WebGpuLike {
 export type WorkerRequest =
   | { id: string; type: 'pose-step'; currentReps: number; targetReps: number; backend: string }
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
-  | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend }
+  | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend; stream?: boolean }
   | { id: string; type: 'qwen-status' }
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
   | { id: string; type: 'qwen-remove' }
@@ -34,6 +34,7 @@ export type WorkerResponse =
       reason?: string;
       restart?: true;
     }
+  | { id: string; type: 'qwen-chunk'; chunk: string }
   | { id: string; type: 'qwen-status'; cached: boolean }
   | { id: string; type: 'qwen-progress'; loadedBytes: number; totalBytes: number }
   | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string; restart?: true }
@@ -114,7 +115,13 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
     }
 
     case 'qwen-generate': {
-      void qwen.generate(data.prompt, data.preferredBackend ?? 'AutoWebGpu').then((result) => {
+      const onChunk = data.stream
+        ? (chunk: string): void => {
+            const event: WorkerResponse = { id: data.id, type: 'qwen-chunk', chunk };
+            postMessage(event);
+          }
+        : undefined;
+      void qwen.generate(data.prompt, data.preferredBackend ?? 'AutoWebGpu', onChunk).then((result) => {
         if (result.reason) {
           // Diagnostic only: explains why on-device Qwen was not used. Never includes the prompt.
           console.info(`[Haloop] Qwen2.5-0.5B-Instruct unavailable, using deterministic reply: ${result.reason}`);

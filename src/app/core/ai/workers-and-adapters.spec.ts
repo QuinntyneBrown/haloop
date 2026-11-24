@@ -102,6 +102,27 @@ describe('ML Worker, Chrome AI & BLE GATT Adapters', () => {
       expect(reply.engine).toBe('Haloop Coach · Qwen2.5-0.5B-Instruct · WebGPU');
     });
 
+    it('forwards streamed Qwen chunks to the caller as an accumulating reply (L2-012, L2-030)', async () => {
+      const seen: string[] = [];
+      const pending = chromeAi.promptCoach('Pace my run', (text) => seen.push(text));
+      await Promise.resolve();
+      const fake = FakeWorker.last!;
+      expect(fake.posted[0]).toMatchObject({ type: 'qwen-generate', stream: true });
+
+      fake.reply({ type: 'qwen-chunk', chunk: 'Easy ' });
+      fake.reply({ type: 'qwen-chunk', chunk: 'pace.' });
+      expect(seen).toEqual(['Easy ', 'Easy pace.']);
+
+      fake.reply({ type: 'qwen-generate', reply: 'Easy pace.', reflection: 'r', engine: 'Qwen2.5-0.5B-Instruct · WASM CPU', device: 'wasm' });
+      expect((await pending).text).toBe('Easy pace.');
+    });
+
+    it('does not request streaming when no chunk callback is given (L2-012)', async () => {
+      void chromeAi.promptCoach('Pace my run');
+      await Promise.resolve();
+      expect(FakeWorker.last!.posted[0]).toMatchObject({ stream: false });
+    });
+
     it('forwards Qwen download progress without settling the request early (L2-027)', async () => {
       const seen: number[] = [];
       const pending = worker.downloadQwen('WasmCpu', (p) => seen.push(p.loadedBytes));
@@ -168,6 +189,45 @@ describe('ML Worker, Chrome AI & BLE GATT Adapters', () => {
 
       void worker.parseVoiceCommand('pause');
       expect(FakeWorker.last).not.toBe(crashed);
+    });
+  });
+
+  describe('Gemini Nano streaming', () => {
+    function stubLanguageModel(chunks: readonly string[]): void {
+      vi.stubGlobal('LanguageModel', {
+        create: async () => ({
+          prompt: async () => chunks.join(''),
+          promptStreaming: async function* () {
+            for (const c of chunks) yield c;
+          },
+        }),
+      });
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      chromeAi.resetPromptSession();
+    });
+
+    it('streams promptStreaming() deltas as an accumulating reply (L2-012)', async () => {
+      stubLanguageModel(['Keep ', 'the load ', 'light.']);
+      const seen: string[] = [];
+
+      const reply = await chromeAi.promptCoach('Sore calves', (t) => seen.push(t));
+
+      expect(seen).toEqual(['Keep ', 'Keep the load ', 'Keep the load light.']);
+      expect(reply.text).toBe('Keep the load light.');
+      expect(reply.engine).toBe('Haloop Coach · Gemini Nano');
+    });
+
+    it('never shows the Chromium echo stub and falls back to the local engine (L2-012)', async () => {
+      stubLanguageModel(['On-device model is not available', ' in Chromium: echo']);
+      const seen: string[] = [];
+
+      const reply = await chromeAi.promptCoach('Give me a breath prayer before plank holds', (t) => seen.push(t));
+
+      expect(seen.some((t) => t.includes('On-device model is not available'))).toBe(false);
+      expect(reply.engine).not.toContain('Gemini Nano');
     });
   });
 

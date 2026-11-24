@@ -117,7 +117,11 @@ const DEFAULT_THREAD: readonly CoachMessage[] = [
               <span class="status-dot status-dot--halo" aria-hidden="true"></span>
               <span>Haloop Coach</span>
             </div>
-            <p class="text-muted">Generating on-device…</p>
+            @if (streamingText(); as streamed) {
+              <p data-testid="coach-streaming-text">{{ streamed }}</p>
+            } @else {
+              <p class="text-muted">Generating on-device…</p>
+            }
           </article>
         }
       </section>
@@ -249,6 +253,7 @@ export class CoachPageComponent {
 
   protected readonly promptText = signal<string>('');
   protected readonly submitting = signal<boolean>(false);
+  protected readonly streamingText = signal<string>('');
   protected readonly sessionInterrupted = signal<boolean>(false);
   protected readonly verseDialogOpen = signal<boolean>(false);
   protected readonly verseQuery = signal<string>('endurance and patience');
@@ -293,7 +298,7 @@ export class CoachPageComponent {
     this.submitting.set(true);
 
     try {
-      const response = await this.chromeAi.promptCoach(clean);
+      const response = await this.chromeAi.promptCoach(clean, (text) => this.streamingText.set(text));
       const reply: CoachMessage = {
         id: `c-${Date.now()}`,
         sender: 'coach',
@@ -307,6 +312,7 @@ export class CoachPageComponent {
     } catch {
       this.sessionInterrupted.set(true);
     } finally {
+      this.streamingText.set('');
       this.submitting.set(false);
     }
   }

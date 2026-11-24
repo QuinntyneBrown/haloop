@@ -62,6 +62,7 @@ interface QwenChatMessage {
 }
 
 export interface QwenPipeline {
+  readonly tokenizer?: unknown;
   (messages: readonly QwenChatMessage[], options: Record<string, unknown>): Promise<unknown>;
   dispose?(): Promise<unknown>;
 }
@@ -84,6 +85,11 @@ export interface QwenLibrary {
     readonly backends: { readonly onnx: { wasm?: { wasmPaths?: unknown } } };
   };
   pipeline(task: string, model: string, options: QwenModelOptions): Promise<QwenPipeline>;
+  /** Optional: when present, replies stream token-by-token (L2-012, L2-030). */
+  readonly TextStreamer?: new (
+    tokenizer: unknown,
+    options: { skip_prompt: boolean; skip_special_tokens: boolean; callback_function: (text: string) => void },
+  ) => unknown;
   readonly ModelRegistry: {
     is_pipeline_cached(task: string, model: string, options: Omit<QwenModelOptions, 'progress_callback'>): Promise<boolean>;
     clear_pipeline_cache(task: string, model: string, options: Omit<QwenModelOptions, 'progress_callback'>): Promise<unknown>;
@@ -111,7 +117,11 @@ export interface QwenEngine {
   status(): Promise<boolean>;
   download(preferred: QwenPreferredBackend, onProgress: (progress: QwenProgress) => void): Promise<QwenOperationResult>;
   remove(): Promise<QwenOperationResult>;
-  generate(prompt: string, preferred: QwenPreferredBackend): Promise<QwenGenerateResult>;
+  generate(
+    prompt: string,
+    preferred: QwenPreferredBackend,
+    onChunk?: (chunk: string) => void,
+  ): Promise<QwenGenerateResult>;
 }
 
 export function ruleBasedCoachReply(prompt: string): string {
@@ -365,7 +375,7 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
       });
     },
 
-    generate(prompt, preferred): Promise<QwenGenerateResult> {
+    generate(prompt, preferred, onChunk): Promise<QwenGenerateResult> {
       return enqueue(async () => {
         try {
           const lib = await getLibrary();
@@ -373,11 +383,24 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
             { role: 'system', content: QWEN_SYSTEM_PROMPT },
             { role: 'user', content: prompt },
           ];
-          const options = { max_new_tokens: 160, do_sample: false, return_full_text: false };
+          const baseOptions = { max_new_tokens: 160, do_sample: false, return_full_text: false };
+          const optionsFor = (pipe: QwenPipeline): Record<string, unknown> =>
+            onChunk && lib.TextStreamer && pipe.tokenizer
+              ? {
+                  ...baseOptions,
+                  streamer: new lib.TextStreamer(pipe.tokenizer, {
+                    skip_prompt: true,
+                    skip_special_tokens: true,
+                    callback_function: (text) => {
+                      if (text.length > 0) onChunk(text);
+                    },
+                  }),
+                }
+              : baseOptions;
           let session = await acquire(lib, preferred);
           let output: unknown;
           try {
-            output = await session.pipe(messages, options);
+            output = await session.pipe(messages, optionsFor(session.pipe));
           } catch (error) {
             if (session.device === 'wasm') {
               throw error;
@@ -385,7 +408,7 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
             // The GPU device was lost or rejected the graph mid-run — retry once on WASM CPU (L2-030).
             webGpuUnusable = true;
             session = await acquire(lib, preferred);
-            output = await session.pipe(messages, options);
+            output = await session.pipe(messages, optionsFor(session.pipe));
           }
           const reply = extractQwenReply(output);
           if (reply.length === 0) {

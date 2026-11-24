@@ -4,7 +4,10 @@ import { MlWorkerClient } from './ml-worker.client';
 
 interface PromptSessionLike {
   prompt(input: string): Promise<string>;
+  promptStreaming?(input: string): AsyncIterable<string>;
 }
+
+const ECHO_STUB = 'On-device model is not available in Chromium';
 
 interface SummarizerLike {
   summarize(input: string): Promise<string>;
@@ -36,7 +39,10 @@ export class ChromeAiService {
   private readonly prefs = inject(PreferencesStore);
   private promptSession: PromptSessionLike | null = null;
 
-  async promptCoach(userPrompt: string): Promise<{ text: string; reflection: string; engine: string }> {
+  async promptCoach(
+    userPrompt: string,
+    onChunk?: (accumulated: string) => void,
+  ): Promise<{ text: string; reflection: string; engine: string }> {
     const g = globalThis as unknown as ChromeAiGlobal;
     if (g.LanguageModel) {
       try {
@@ -44,8 +50,8 @@ export class ChromeAiService {
           systemPrompt:
             'You are Haloop Coach, a concise, encouraging on-device movement and devotional coach. Respond in 2-3 sentences.',
         });
-        const text = await this.promptSession.prompt(userPrompt);
-        if (!text.startsWith('On-device model is not available in Chromium')) {
+        const text = await this.runGeminiPrompt(this.promptSession, userPrompt, onChunk);
+        if (!text.startsWith(ECHO_STUB)) {
           return {
             text,
             reflection: 'Isaiah 40:31 — wait upon the LORD to renew your strength.',
@@ -57,15 +63,48 @@ export class ChromeAiService {
       }
     }
 
+    let accumulated = '';
     const fallback = await this.worker.generateCoachReply(
       userPrompt,
       this.prefs.preferences().preferredBackend,
+      onChunk
+        ? (chunk) => {
+            accumulated += chunk;
+            onChunk(accumulated);
+          }
+        : undefined,
     );
     return {
       text: fallback.reply,
       reflection: fallback.reflection,
       engine: `Haloop Coach · ${fallback.engine}`,
     };
+  }
+
+  /**
+   * Streams via `promptStreaming()` when available. Chunks are held back while the text could still be
+   * the Chromium echo stub so the stub never flashes in the UI; chunks are deltas, accumulated for the caller.
+   */
+  private async runGeminiPrompt(
+    session: PromptSessionLike,
+    input: string,
+    onChunk?: (accumulated: string) => void,
+  ): Promise<string> {
+    if (!onChunk || !session.promptStreaming) {
+      return session.prompt(input);
+    }
+    let text = '';
+    let revealed = false;
+    for await (const chunk of session.promptStreaming(input)) {
+      text += chunk;
+      if (!revealed && !ECHO_STUB.startsWith(text) && !text.startsWith(ECHO_STUB)) {
+        revealed = true;
+      }
+      if (revealed) {
+        onChunk(text);
+      }
+    }
+    return text;
   }
 
   resetPromptSession(): void {

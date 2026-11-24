@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Coach replies now stream token-by-token: `LanguageModel.promptStreaming()` for Gemini Nano (echo stub never shown) and `TextStreamer` chunks from the Qwen2.5-0.5B worker, rendered live as escaped text in the in-progress bubble (#2).
 - Root `README.md` aligned with the expected on-device AI, WebGPU, and Web Bluetooth final implementation.
 - Open-source community and governance documentation (`LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`, `CHANGELOG.md`, and `.github/` issue/PR templates).
 - AI coding agent instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/haloop.mdc`, `.windsurf/rules/haloop.md`, `.clinerules`, `.junie/guidelines.md`, `.amazonq/rules/haloop.md`).
