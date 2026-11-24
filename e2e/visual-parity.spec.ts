@@ -3,6 +3,7 @@
 // between docs/mocks/ and the live Haloop Angular app at http://localhost:4200.
 
 import { expect, test } from '@playwright/test';
+import { installHuggingFaceFixture } from './support/hf-fixture';
 import * as path from 'node:path';
 
 const MOCK_ROOT = path.resolve(process.cwd(), 'docs/mocks');
@@ -115,6 +116,7 @@ const ROUTES: { name: string; mock: string; route: string; selectors: string[] }
 ];
 
 test('Visual parity audit across all 12 pages', async ({ page }) => {
+  await installHuggingFaceFixture(page);
   const diffs: string[] = [];
 
   for (const item of ROUTES) {
@@ -154,6 +156,7 @@ test('Visual parity audit across all 12 pages', async ({ page }) => {
 });
 
 test('Visual parity audit across all 5 modal dialogs and toasts', async ({ page }) => {
+  await installHuggingFaceFixture(page);
   const dialogDiffs: string[] = [];
   const dialogSelectors = ['.dialog__panel', '.dialog__header', '.dialog__icon', '.dialog__title', '.dialog__body', '.dialog__footer'];
 

@@ -20,6 +20,7 @@ function configure(worker: Partial<MlWorkerClient>) {
         provide: MlWorkerClient,
         useValue: {
           workerSupported: true,
+          probeModelStorage: async () => ({ ok: true }),
           qwenCacheStatus: async () => false,
           modelCacheStatus: async () => false,
           cancelModelDownload: async () => undefined,

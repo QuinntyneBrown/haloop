@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { BrowserCapabilityService } from '../../core/capabilities/browser-capability.service';
 import { ModelRegistryStore, OpenModelEntry } from '../../core/state/model-registry.store';
 import { SystemStatusStore } from '../../core/state/system-status.store';
@@ -6,7 +7,93 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
 @Component({
   selector: 'app-ai-lab-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink],
   template: `
+    @if (!registry.loaded()) {
+      <div class="stack" aria-busy="true" data-testid="ailab-loading">
+        <div class="stack stack--sm" role="status" aria-label="Loading AI Lab">
+          <span class="skeleton skeleton--text" style="width: 78%;"></span>
+          <span class="skeleton skeleton--text" style="width: 52%;"></span>
+        </div>
+        <section class="stack">
+          <div class="section-head">
+            <h2>Built into Chrome</h2>
+            <span class="text-sm text-muted">Checking Gemini Nano capabilities…</span>
+          </div>
+          <ul class="builtin-grid">
+          <li class="builtin-row">
+            <div class="stack stack--sm" style="flex:1;">
+              <span class="skeleton skeleton--text" style="width:40%;"></span>
+              <span class="skeleton skeleton--text" style="width:70%;"></span>
+            </div>
+            <span class="skeleton" style="width:4.5rem;height:1rem;"></span>
+          </li>
+          <li class="builtin-row">
+            <div class="stack stack--sm" style="flex:1;">
+              <span class="skeleton skeleton--text" style="width:40%;"></span>
+              <span class="skeleton skeleton--text" style="width:70%;"></span>
+            </div>
+            <span class="skeleton" style="width:4.5rem;height:1rem;"></span>
+          </li>
+          <li class="builtin-row">
+            <div class="stack stack--sm" style="flex:1;">
+              <span class="skeleton skeleton--text" style="width:40%;"></span>
+              <span class="skeleton skeleton--text" style="width:70%;"></span>
+            </div>
+            <span class="skeleton" style="width:4.5rem;height:1rem;"></span>
+          </li>
+          <li class="builtin-row">
+            <div class="stack stack--sm" style="flex:1;">
+              <span class="skeleton skeleton--text" style="width:40%;"></span>
+              <span class="skeleton skeleton--text" style="width:70%;"></span>
+            </div>
+            <span class="skeleton" style="width:4.5rem;height:1rem;"></span>
+          </li>
+          </ul>
+        </section>
+        <section class="stack">
+          <div class="section-head">
+            <div>
+              <h2>Open models</h2>
+              <p class="text-sm text-muted">Inspecting local Cache Storage…</p>
+            </div>
+            <div class="budget-box"><span class="skeleton skeleton--text" style="width:100%;"></span></div>
+          </div>
+          <div class="model-list">
+            @for (n of [1, 2, 3]; track n) {
+              <div class="model-row">
+                <div class="stack stack--sm">
+                  <span class="skeleton skeleton--text" style="width:55%;"></span>
+                  <span class="skeleton skeleton--text" style="width:80%;"></span>
+                </div>
+                <span class="skeleton skeleton--text" style="width:70%;"></span>
+                <span class="skeleton skeleton--text" style="width:3rem;margin-left:auto;"></span>
+                <span class="skeleton" style="width:6rem;height:2rem;border-radius:var(--radius-full);margin-left:auto;"></span>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    } @else {
+    @if (registry.storageError(); as storageError) {
+      <div class="alert alert--danger" role="alert" data-testid="ailab-storage-error">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+        <div class="alert__body">
+          <div class="alert__title">Could not read on-device model storage</div>
+          <p class="text-sm">
+            Your browser blocked Origin Private File System access in this window (common in private browsing or when
+            disk quota is full). Built-in Chrome APIs remain available.
+          </p>
+          <p class="text-sm text-muted">{{ storageError }}</p>
+          <div class="alert__actions">
+            <button type="button" class="toast__action" (click)="registry.checkStorage()" data-testid="ailab-retry-check">
+              Retry check
+            </button>
+            <a routerLink="/settings">Check storage settings</a>
+          </div>
+        </div>
+      </div>
+    }
     <p class="text-soft" style="font-size: var(--font-size-lg); line-height: var(--line-height-normal);">
       Every model Haloop uses runs in this tab. Chrome manages its built-in Gemini Nano; open models download once from
       Hugging Face and run on your {{ status.wasmFallbackActive() ? 'CPU via WebAssembly' : 'GPU via WebGPU' }}.
@@ -93,6 +180,15 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
         </div>
       </div>
 
+      @if (noModelsCached() && !registry.storageError()) {
+        <div class="card stack stack--sm" data-testid="ailab-empty">
+          <div class="card__title">No open models cached yet</div>
+          <p class="text-sm text-muted">
+            Download any model below once from Hugging Face to run rep counting, voice commands, coach speech, or KJV
+            verse search completely offline in this tab.
+          </p>
+        </div>
+      }
       <div class="model-list">
         @for (m of registry.models(); track m.id) {
           <div class="model-row">
@@ -130,7 +226,7 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
                   type="button"
                   class="btn btn--ghost btn--icon btn--sm"
                   [attr.aria-label]="'Remove ' + m.title + ' model'"
-                  (click)="pendingRemoval.set(m)"
+                  (click)="openRemove(m)"
                   [attr.data-testid]="'ailab-remove-' + m.id"
                 >
                   <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24">
@@ -170,6 +266,7 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
         }
       </div>
     </section>
+    }
 
     @if (flagsDialogOpen()) {
       <div class="backdrop" (click)="flagsDialogOpen.set(false)"></div>
@@ -211,6 +308,14 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
               <li>Switch the flag from <strong>Default</strong> to <strong>Enabled</strong>.</li>
               <li>Relaunch Chrome, then return here to verify Writer &amp; Rewriter.</li>
             </ol>
+            @if (flagsRecheckMessage(); as message) {
+              <div class="alert alert--warning" role="status" data-testid="chrome-flags-result">
+                <div class="alert__body">
+                  <div class="alert__title">Writer &amp; Rewriter still not detected</div>
+                  <p class="text-sm">{{ message }}</p>
+                </div>
+              </div>
+            }
           </div>
           <div class="dialog__footer">
             <button type="button" class="btn btn--pill" (click)="flagsDialogOpen.set(false)">Close</button>
@@ -229,13 +334,13 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
     }
 
     @if (pendingRemoval(); as target) {
-      <div class="backdrop" (click)="pendingRemoval.set(null)"></div>
+      <div class="backdrop" (click)="closeRemove()"></div>
       <div
         class="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rm-dlg-title"
-        (keydown.escape)="pendingRemoval.set(null)"
+        (keydown.escape)="closeRemove()"
         data-testid="remove-model-dialog"
       >
         <div class="dialog__panel">
@@ -256,19 +361,28 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
               type="button"
               class="btn btn--ghost btn--icon btn--sm"
               aria-label="Close dialog"
-              (click)="pendingRemoval.set(null)"
+              (click)="closeRemove()"
             >
               <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
           </div>
           <div class="dialog__body stack">
+            @if (removeError(); as failure) {
+              <div class="alert alert--danger" role="alert" data-testid="remove-model-error">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                <div class="alert__body">
+                  <div class="alert__title">Could not delete model cache</div>
+                  <p class="text-sm">{{ failure }}</p>
+                </div>
+              </div>
+            }
             <p class="text-sm text-muted">
               Repository: <code>{{ target.repoId }}</code> · {{ target.sizeMb }} MB will be freed from your browser
               cache. You can re-download it anytime from Hugging Face.
             </p>
           </div>
           <div class="dialog__footer">
-            <button type="button" class="btn btn--pill" (click)="pendingRemoval.set(null)">Cancel</button>
+            <button type="button" class="btn btn--pill" (click)="closeRemove()">Cancel</button>
             <button
               type="button"
               class="btn btn--danger btn--pill"
@@ -276,7 +390,7 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
               [disabled]="removing()"
               data-testid="remove-model-confirm"
             >
-              {{ removing() ? 'Removing…' : 'Remove ' + target.sizeMb + ' MB' }}
+              {{ removing() ? 'Removing…' : removeError() ? 'Retry remove' : 'Remove ' + target.sizeMb + ' MB' }}
             </button>
           </div>
         </div>
@@ -333,18 +447,55 @@ export class AiLabPageComponent {
   protected readonly pendingRemoval = signal<OpenModelEntry | null>(null);
   protected readonly removing = signal<boolean>(false);
 
+  protected readonly removeError = signal<string | null>(null);
+  protected readonly flagsRecheckMessage = signal<string | null>(null);
+  protected readonly noModelsCached = computed(() =>
+    this.registry.models().every((m) => m.state === 'not-downloaded'),
+  );
+
+  /** Re-probes the real Chrome Built-in AI APIs; the dialog only closes once Writer & Rewriter is detected. */
   protected async recheckFlags(): Promise<void> {
     this.recheckingFlags.set(true);
-    await new Promise((r) => setTimeout(r, 200));
-    this.capabilities.enableWriterFlagSimulated();
-    this.recheckingFlags.set(false);
-    this.flagsDialogOpen.set(false);
+    this.flagsRecheckMessage.set(null);
+    try {
+      const report = await this.capabilities.recheck();
+      if (report.writerFlagEnabled) {
+        this.flagsDialogOpen.set(false);
+      } else {
+        this.flagsRecheckMessage.set(
+          'Chrome still reports the Writer API as unavailable. Enable the flag, relaunch Chrome, then check again.',
+        );
+      }
+    } finally {
+      this.recheckingFlags.set(false);
+    }
   }
 
+  protected openRemove(model: OpenModelEntry): void {
+    this.removeError.set(null);
+    this.pendingRemoval.set(model);
+  }
+
+  protected closeRemove(): void {
+    this.removeError.set(null);
+    this.pendingRemoval.set(null);
+  }
+
+  /** A failed deletion keeps the dialog open with an actionable error instead of closing silently. */
   protected async confirmRemove(id: string): Promise<void> {
     this.removing.set(true);
-    await this.registry.removeModel(id);
-    this.removing.set(false);
-    this.pendingRemoval.set(null);
+    this.removeError.set(null);
+    try {
+      const result = await this.registry.removeModel(id);
+      if (result.ok) {
+        this.closeRemove();
+      } else {
+        this.removeError.set(
+          `${result.reason ?? 'The cached files could not be deleted.'} Close any Train tab using this model, then retry.`,
+        );
+      }
+    } finally {
+      this.removing.set(false);
+    }
   }
 }

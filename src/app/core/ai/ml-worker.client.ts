@@ -293,6 +293,11 @@ export class MlWorkerClient implements OnDestroy {
     );
   }
 
+  /** Whether this window lets the worker read on-device model storage (Cache Storage and OPFS). */
+  probeModelStorage(): Promise<QwenOperationOutput> {
+    return this.dispatch<QwenOperationOutput>({ type: 'storage-probe' }, () => ({ ok: true }));
+  }
+
   /** Whether a core model's files are really present in Cache Storage; `null` when no worker is available. */
   modelCacheStatus(modelId: string): Promise<boolean | null> {
     return this.dispatch<{ cached: boolean | null }>({ type: 'model-status', modelId }, () => ({ cached: null })).then(
