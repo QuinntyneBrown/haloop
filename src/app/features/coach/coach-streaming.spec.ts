@@ -6,6 +6,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ChromeAiService } from '../../core/ai/chrome-ai.service';
+import { HaloopDbService } from '../../core/storage/haloop-db.service';
 import { CoachPageComponent } from './coach-page.component';
 
 describe('Coach streaming', () => {
@@ -22,7 +23,11 @@ describe('Coach streaming', () => {
       resetPromptSession: () => undefined,
     };
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: ChromeAiService, useValue: fake }],
+      providers: [
+        provideRouter([]),
+        { provide: ChromeAiService, useValue: fake },
+        { provide: HaloopDbService, useValue: { get: async () => null, set: async () => undefined } },
+      ],
     });
     const fixture = TestBed.createComponent(CoachPageComponent);
     const host = fixture.nativeElement as HTMLElement;

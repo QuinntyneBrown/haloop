@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MlWorkerClient } from '../../core/ai/ml-worker.client';
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
+import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
 import { validateReflectionNote } from '../../core/security/sanitize';
 
 type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
@@ -40,6 +41,14 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
         </button>
       </div>
     </div>
+
+    @if (plan.adjustment(); as adj) {
+      <section class="alert" role="status" aria-live="polite" data-testid="train-adjustment-banner">
+        <strong>Coach adjustment applied · {{ plan.loadLabel() }}</strong>
+        <p>Start with {{ adj.warmUp.durationSeconds }} seconds of {{ adj.warmUp.label.toLowerCase() }} before your first set.</p>
+        <button type="button" class="btn btn--sm btn--ghost" (click)="plan.clear()" data-testid="train-adjustment-dismiss">Dismiss</button>
+      </section>
+    }
 
     @if (phase() === 'paused') {
       <section class="alert alert--warning" role="status" aria-live="polite" data-testid="train-paused-banner">
@@ -216,6 +225,7 @@ type WorkoutPhase = 'active' | 'paused' | 'camera-blocked';
   `,
 })
 export class TrainPageComponent implements OnDestroy {
+  protected readonly plan = inject(WorkoutPlanStore);
   private readonly history = inject(WorkoutHistoryStore);
   private readonly mlWorker = inject(MlWorkerClient);
   private readonly prefs = inject(PreferencesStore);
