@@ -7,6 +7,7 @@ import {
   QwenPreferredBackend,
   createQwenEngine,
 } from './qwen-engine';
+import { KokoroLibrary, createTtsEngine } from './tts-engine';
 import { PoseKeypoint, VitPoseDevice, VitPoseLibrary, VitPosePreferredBackend, createVitPoseEngine } from './vitpose-engine';
 
 interface WebGpuLike {
@@ -18,6 +19,7 @@ export type WorkerRequest =
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
   | { id: string; type: 'pose-frame'; bitmap: ImageBitmap; preferredBackend?: VitPosePreferredBackend }
   | { id: string; type: 'pose-dispose' }
+  | { id: string; type: 'tts-speak'; text: string; voice?: string }
   | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend; stream?: boolean }
   | { id: string; type: 'qwen-status' }
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
@@ -35,6 +37,7 @@ export type WorkerResponse =
       reason?: string;
     }
   | { id: string; type: 'pose-dispose' }
+  | { id: string; type: 'tts-speak'; samples: Float32Array | null; sampleRate: number; reason?: string }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
   | {
       id: string;
@@ -90,8 +93,21 @@ const vitpose = createVitPoseEngine({
   },
 });
 
+const tts = createTtsEngine({
+  loadLibrary: async () => (await import('kokoro-js')) as unknown as KokoroLibrary,
+});
+
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
+    case 'tts-speak': {
+      void tts.synthesize(data.text, data.voice).then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'tts-speak', ...result };
+        // Transfer the PCM buffer instead of copying it.
+        postMessage(res, result.samples ? [result.samples.buffer] : []);
+      });
+      break;
+    }
+
     case 'pose-frame': {
       const { bitmap } = data;
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);

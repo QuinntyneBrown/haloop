@@ -17,6 +17,13 @@ export interface PoseFrameOutput {
   readonly reason?: string;
 }
 
+export interface SpeechOutput {
+  /** Mono PCM samples, or `null` when synthesis is unavailable. */
+  readonly samples: Float32Array | null;
+  readonly sampleRate: number;
+  readonly reason?: string;
+}
+
 export interface WorkerSearchOutput {
   readonly reference: string;
   readonly text: string;
@@ -176,6 +183,15 @@ export class MlWorkerClient implements OnDestroy {
       undefined,
       [bitmap],
     );
+  }
+
+  /** Synthesizes a spoken coaching cue locally with Kokoro-82M; resolves with `samples: null` when unavailable. */
+  synthesizeCue(text: string, voice?: string): Promise<SpeechOutput> {
+    return this.dispatch<SpeechOutput>({ type: 'tts-speak', text, voice }, () => ({
+      samples: null,
+      sampleRate: 0,
+      reason: 'The ML Web Worker is unavailable.',
+    }));
   }
 
   /** Releases the pose model's memory (e.g. when the camera stops). */
