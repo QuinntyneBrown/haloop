@@ -114,7 +114,7 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
             </div>
             <div class="model-row__task">{{ m.taskLabel }}</div>
             <div class="model-row__size">
-              @if (m.state === 'downloading') {
+              @if (m.state === 'downloading' || m.state === 'paused') {
                 {{ m.downloadedMb }} / {{ m.sizeMb }} MB
               } @else {
                 {{ m.sizeMb }} MB
@@ -140,6 +140,16 @@ import { SystemStatusStore } from '../../core/state/system-status.store';
                 </button>
               } @else if (m.state === 'downloading') {
                 <span class="badge">Downloading…</span>
+              } @else if (m.state === 'paused') {
+                <span class="badge" data-testid="ailab-paused-badge">Paused</span>
+                <button
+                  type="button"
+                  class="btn btn--sm btn--pill"
+                  (click)="registry.downloadModel(m.id)"
+                  [attr.data-testid]="'ailab-resume-' + m.id"
+                >
+                  Resume
+                </button>
               } @else {
                 <button
                   type="button"

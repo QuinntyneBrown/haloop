@@ -2,6 +2,7 @@
 // Traces to: L2-001, L2-002, L2-004, L2-005, L2-006, L2-007, L2-009, L2-010, L2-011, L2-012, L2-014, L2-015, L2-016, L2-017, L2-018, L2-019, L2-020, L2-021, L2-022, L2-023, L2-024, L2-025, L2-027, L2-028, L2-031, L2-032, L2-033, L2-034
 // Description: Full end-to-end Playwright CLI walkthrough exercising every Haloop feature and recording a video demonstration.
 
+import { installHuggingFaceFixture } from './support/hf-fixture';
 import { expect, test } from '@playwright/test';
 
 test('Haloop complete feature walkthrough with video recording', async ({ page }) => {
@@ -19,6 +20,8 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
       externalRequests.push(url);
     }
   });
+
+  await installHuggingFaceFixture(page);
 
   // Headless Chromium has no Bluetooth chooser, so stand in a heart-rate strap that streams 138 bpm.
   await page.addInitScript(() => {
@@ -214,5 +217,6 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
 
   // Zero console errors and zero outbound third-party network calls (L2-027)
   expect(consoleErrors).toEqual([]);
-  expect(externalRequests).toEqual([]);
+  // The only permitted network traffic is the explicit MiniLM Download click in AI Lab (served by the fixture).
+  expect(externalRequests.filter((url) => !url.includes('Xenova/all-MiniLM-L6-v2'))).toEqual([]);
 });

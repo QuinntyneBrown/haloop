@@ -23,6 +23,10 @@ export class SystemStatusStore {
   readonly cachedModelCount = signal<number>(4);
   readonly cachedModelMb = signal<number>(286);
   readonly dismissedBannerIds = signal<ReadonlySet<string>>(new Set());
+  /** Model downloads that stopped when the connection dropped and can be resumed from AI Lab. */
+  readonly pausedDownloadCount = signal<number>(0);
+  /** True after a real offline -> online transition, so the banner is not shown on a normal page load. */
+  readonly cameBackOnline = signal<boolean>(false);
 
   readonly storageUsagePercent = computed(() => {
     const budget = Math.max(512, this.prefs.preferences().cacheBudgetMb);
@@ -44,6 +48,17 @@ export class SystemStatusStore {
         severity: 'danger',
         message: `Browser storage nearly full — ${this.cachedModelMb()} MB of ${this.prefs.preferences().cacheBudgetMb} MB used; new sessions may fail to save.`,
         actionLabel: 'Manage cache',
+        actionRoute: '/lab',
+        dismissible: true,
+      };
+    }
+
+    if (this.isOnline() && this.cameBackOnline() && this.pausedDownloadCount() > 0 && !dismissed.has('back-online')) {
+      return {
+        id: 'back-online',
+        severity: 'success',
+        message: 'Back online — paused Hugging Face model downloads can resume.',
+        actionLabel: 'Open AI Lab',
         actionRoute: '/lab',
         dismissible: true,
       };
@@ -76,8 +91,16 @@ export class SystemStatusStore {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => this.isOnline.set(true));
-      window.addEventListener('offline', () => this.isOnline.set(false));
+      window.addEventListener('online', () => {
+        this.isOnline.set(true);
+        this.cameBackOnline.set(true);
+        // A fresh offline spell must be able to raise the banner again.
+        this.dismissedBannerIds.update((ids) => new Set([...ids].filter((id) => id !== 'back-online')));
+      });
+      window.addEventListener('offline', () => {
+        this.isOnline.set(false);
+        this.cameBackOnline.set(false);
+      });
     }
   }
 

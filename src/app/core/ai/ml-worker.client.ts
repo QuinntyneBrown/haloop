@@ -293,6 +293,37 @@ export class MlWorkerClient implements OnDestroy {
     );
   }
 
+  /** Whether a core model's files are really present in Cache Storage; `null` when no worker is available. */
+  modelCacheStatus(modelId: string): Promise<boolean | null> {
+    return this.dispatch<{ cached: boolean | null }>({ type: 'model-status', modelId }, () => ({ cached: null })).then(
+      (r) => r.cached,
+    );
+  }
+
+  /** Streams a core model from Hugging Face into Cache Storage inside the worker, reporting byte progress. */
+  downloadModel(
+    modelId: string,
+    onProgress: (progress: QwenDownloadProgress) => void,
+  ): Promise<QwenOperationOutput & { paused?: boolean }> {
+    return this.dispatch<QwenOperationOutput & { paused?: boolean }>(
+      { type: 'model-download', modelId },
+      () => ({ ok: false, reason: 'The ML Web Worker is unavailable.' }),
+      onProgress,
+    );
+  }
+
+  /** Pauses a running download; finished files stay cached so it can resume. */
+  cancelModelDownload(modelId: string): Promise<void> {
+    return this.dispatch<unknown>({ type: 'model-cancel', modelId }, () => undefined).then(() => undefined);
+  }
+
+  removeModelFiles(modelId: string): Promise<QwenOperationOutput> {
+    return this.dispatch<QwenOperationOutput>({ type: 'model-remove', modelId }, () => ({
+      ok: false,
+      reason: 'The ML Web Worker is unavailable.',
+    }));
+  }
+
   removeQwen(): Promise<QwenOperationOutput> {
     return this.dispatch<QwenOperationOutput>({ type: 'qwen-remove' }, () => ({
       ok: false,

@@ -39,6 +39,8 @@ test.describe('Coach Gemini Nano streaming and session recovery', () => {
     await page.getByTestId('coach-send').click();
     await expect(page.getByTestId('coach-send')).toBeDisabled();
     await expect(page.getByTestId('coach-streaming-text')).toContainText('Keep');
+    // The streaming bubble and the saved reply can both show the text for one frame.
+    await expect(page.getByText('Keep it light today (11).')).toHaveCount(1);
     await expect(page.getByText('Keep it light today (11).')).toBeVisible();
     await expect(page.getByTestId('coach-send')).toBeEnabled();
 
@@ -57,6 +59,8 @@ test.describe('Coach Gemini Nano streaming and session recovery', () => {
     await expect(page.getByText('Gemini Nano session interrupted')).toBeHidden();
     await page.getByTestId('coach-prompt-input').fill('Back again');
     await page.getByTestId('coach-send').click();
+    // The streaming bubble and the saved reply can both show the text for one frame.
+    await expect(page.getByText('Keep it light today (10).')).toHaveCount(1);
     await expect(page.getByText('Keep it light today (10).')).toBeVisible();
   });
 

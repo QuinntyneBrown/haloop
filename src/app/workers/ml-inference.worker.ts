@@ -8,6 +8,7 @@ import {
   createQwenEngine,
 } from './qwen-engine';
 import { KokoroLibrary, createTtsEngine } from './tts-engine';
+import { createModelDownloader } from './model-downloader';
 import { EmbedDevice, EmbedLibrary, EmbedPreferredBackend, VectorIndex, createEmbedEngine } from './embed-engine';
 import { SttDevice, SttLibrary, SttPreferredBackend, createSttEngine } from './stt-engine';
 import { PoseKeypoint, VitPoseDevice, VitPoseLibrary, VitPosePreferredBackend, createVitPoseEngine } from './vitpose-engine';
@@ -34,6 +35,10 @@ export type WorkerRequest =
   | { id: string; type: 'qwen-status' }
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
   | { id: string; type: 'qwen-remove' }
+  | { id: string; type: 'model-status'; modelId: string }
+  | { id: string; type: 'model-download'; modelId: string }
+  | { id: string; type: 'model-cancel'; modelId: string }
+  | { id: string; type: 'model-remove'; modelId: string }
   | { id: string; type: 'whisper-command'; transcript: string };
 
 export type WorkerResponse =
@@ -74,6 +79,10 @@ export type WorkerResponse =
   | { id: string; type: 'qwen-progress'; loadedBytes: number; totalBytes: number }
   | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string; restart?: true }
   | { id: string; type: 'qwen-remove'; ok: boolean; reason?: string }
+  | { id: string; type: 'model-status'; cached: boolean }
+  | { id: string; type: 'model-download'; ok: boolean; paused?: boolean; reason?: string }
+  | { id: string; type: 'model-cancel' }
+  | { id: string; type: 'model-remove'; ok: boolean; reason?: string }
   | { id: string; type: 'whisper-command'; action: 'next-set' | 'pause' | 'resume' | 'finish' | 'none' };
 
 const CUES = [
@@ -105,12 +114,18 @@ const qwen = createQwenEngine({
   },
 });
 
+const modelDownloader = createModelDownloader({
+  fetchImpl: (url, init) => fetch(url, init),
+  openCache: (name) => caches.open(name),
+});
+
 const vitpose = createVitPoseEngine({
   loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as VitPoseLibrary,
   detectWebGpu: async () => {
     const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
     return (await gpu?.requestAdapter()) != null;
   },
+  isCached: () => modelDownloader.status('vitpose'),
 });
 
 const tts = createTtsEngine({
@@ -291,6 +306,42 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
           console.info(`[Haloop] Qwen2.5-0.5B-Instruct unavailable, using deterministic reply: ${result.reason}`);
         }
         const res: WorkerResponse = { id: data.id, type: 'qwen-generate', reflection: QWEN_REFLECTION, ...result };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'model-status': {
+      void modelDownloader.status(data.modelId).then((cached) => {
+        const res: WorkerResponse = { id: data.id, type: 'model-status', cached };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'model-download': {
+      void modelDownloader
+        .download(data.modelId, (progress) => {
+          const event: WorkerResponse = { id: data.id, type: 'qwen-progress', ...progress };
+          postMessage(event);
+        })
+        .then((result) => {
+          const res: WorkerResponse = { id: data.id, type: 'model-download', ...result };
+          postMessage(res);
+        });
+      break;
+    }
+
+    case 'model-cancel': {
+      modelDownloader.cancel(data.modelId);
+      const res: WorkerResponse = { id: data.id, type: 'model-cancel' };
+      postMessage(res);
+      break;
+    }
+
+    case 'model-remove': {
+      void modelDownloader.remove(data.modelId).then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'model-remove', ...result };
         postMessage(res);
       });
       break;

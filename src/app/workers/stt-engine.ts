@@ -57,7 +57,7 @@ export function createSttEngine(deps: SttEngineDeps): SttEngine {
       lib.env.allowRemoteModels = false;
       lib.env.allowLocalModels = false;
       const wantGpu = preferred === 'AutoWebGpu' && !webGpuUnusable && (await deps.detectWebGpu());
-      const create = (device: SttDevice) => lib.pipeline(WHISPER_TASK, WHISPER_MODEL_ID, { device, dtype: 'fp32' });
+      const create = (device: SttDevice) => lib.pipeline(WHISPER_TASK, WHISPER_MODEL_ID, { device, dtype: 'q8' });
       if (wantGpu) {
         try {
           return { pipe: await create('webgpu'), device: 'webgpu' as const };

@@ -5,7 +5,7 @@
  */
 
 export const VITPOSE_MODEL_ID = 'onnx-community/vitpose-base-simple';
-export const VITPOSE_DTYPE = 'fp32';
+export const VITPOSE_DTYPE = 'q8';
 
 export type VitPoseDevice = 'webgpu' | 'wasm';
 export type VitPosePreferredBackend = 'AutoWebGpu' | 'WasmCpu';
@@ -62,6 +62,8 @@ export interface VitPoseEngineDeps {
   readonly loadLibrary: () => Promise<VitPoseLibrary>;
   readonly detectWebGpu: () => Promise<boolean>;
   readonly now?: () => number;
+  /** Whether the weights are cached locally; when not, detection is skipped without any network. */
+  readonly isCached?: () => Promise<boolean>;
 }
 
 export interface VitPoseEngine {
@@ -83,6 +85,9 @@ export function createVitPoseEngine(deps: VitPoseEngineDeps): VitPoseEngine {
   async function load(preferred: VitPosePreferredBackend) {
     const lib = await deps.loadLibrary();
     lib.env.useBrowserCache = true;
+    // Cache-only: the camera must never trigger a download (L2-027); downloads happen in AI Lab.
+    lib.env.allowRemoteModels = false;
+    lib.env.allowLocalModels = false;
     const wantGpu = preferred === 'AutoWebGpu' && !webGpuUnusable && (await deps.detectWebGpu());
     const processor = await lib.AutoProcessor.from_pretrained(VITPOSE_MODEL_ID);
     try {
@@ -141,6 +146,9 @@ export function createVitPoseEngine(deps: VitPoseEngineDeps): VitPoseEngine {
     async detect(frame, preferred): Promise<PoseFrameResult> {
       const started = now();
       try {
+        if (deps.isCached && !(await deps.isCached())) {
+          return { keypoints: null, device: null, inferenceMs: 0, reason: 'ViTPose is not downloaded on this device.' };
+        }
         const { model, processor, device } = await session(preferred);
         const RawImage = library?.RawImage;
         if (!RawImage) {
