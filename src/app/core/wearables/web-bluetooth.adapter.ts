@@ -26,6 +26,17 @@ export function parseBleBatteryLevel(data: DataView): number {
   return Math.min(100, Math.max(0, data.getUint8(0)));
 }
 
+/**
+ * Parses the cadence (steps per minute) from a Running Speed and Cadence Measurement (0x2A53) payload:
+ * flags (uint8), instantaneous speed (uint16, 1/256 m/s), instantaneous cadence (uint8).
+ */
+export function parseBleRunningCadence(data: DataView): number {
+  if (data.byteLength < 4) {
+    return 0;
+  }
+  return data.getUint8(3);
+}
+
 interface BluetoothNavigator {
   bluetooth?: {
     getAvailability?(): Promise<boolean>;

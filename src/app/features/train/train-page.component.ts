@@ -17,6 +17,8 @@ import { VoiceCommand, VoiceCommandService } from '../../core/audio/voice-comman
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
+import { BluetoothDeviceStore } from '../../core/state/bluetooth-device.store';
+import { TelemetryStore } from '../../core/state/telemetry.store';
 import {
   MORNING_STRENGTH_PLAN,
   SETS_PER_MOVEMENT,
@@ -157,7 +159,7 @@ const AUDIO_ONLY_CUES: readonly string[] = [
                   d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
                 />
               </svg>
-              {{ heartRate() }} bpm · Zone 3
+              <span data-testid="train-hud-hr">{{ heartRateLabel() }}</span>
             </span>
             @if (voice.state() === 'listening') {
               <span class="camera-stage__pill" role="status" data-testid="train-voice-status">
@@ -229,13 +231,18 @@ const AUDIO_ONLY_CUES: readonly string[] = [
       <section class="kpi-grid">
         <div class="card stat">
           <span class="stat__label">Heart rate</span>
-          <span class="stat__value">{{ heartRate() }} bpm</span>
-          <span class="stat__delta text-muted">Polar H10 · Live</span>
+          <span class="stat__value" data-testid="train-kpi-hr">{{ heartRate() === null ? '—' : heartRate() + ' bpm' }}</span>
+          <span class="stat__delta text-muted" data-testid="train-kpi-hr-source">{{ heartRateCaption() }}</span>
         </div>
         <div class="card stat">
           <span class="stat__label">Cadence</span>
-          <span class="stat__value">3-1-1</span>
-          <span class="stat__delta stat__delta--up">On target tempo</span>
+          @if (telemetry.cadence(); as spm) {
+            <span class="stat__value" data-testid="train-kpi-cadence">{{ spm }} spm</span>
+            <span class="stat__delta text-muted">{{ telemetry.cadenceSource()?.label }} · Live</span>
+          } @else {
+            <span class="stat__value">3-1-1</span>
+            <span class="stat__delta stat__delta--up">On target tempo</span>
+          }
         </div>
         <div class="card stat">
           <span class="stat__label">Up next</span>
@@ -356,7 +363,10 @@ export class TrainPageComponent implements OnDestroy {
   protected readonly phase = signal<WorkoutPhase>('active');
   protected readonly reps = signal<number>(8);
   protected readonly formScore = signal<number>(95);
-  protected readonly heartRate = signal<number>(134);
+  /** Injected so the paired-device list is registered and its sensors are streaming into telemetry. */
+  protected readonly devices = inject(BluetoothDeviceStore);
+  protected readonly telemetry = inject(TelemetryStore);
+  protected readonly heartRate = this.telemetry.heartRate;
   protected readonly elapsedSeconds = signal<number>(702);
   protected readonly activeCue = signal<string>('Chest proud, smooth descent — great knee tracking.');
   protected readonly cameraActive = signal<boolean>(false);
@@ -409,6 +419,7 @@ export class TrainPageComponent implements OnDestroy {
   private readonly timerId = setInterval(() => {
     if (this.phase() === 'active') {
       this.elapsedSeconds.update((s) => s + 1);
+      this.telemetry.sample();
     }
   }, 1000);
 
@@ -512,6 +523,22 @@ export class TrainPageComponent implements OnDestroy {
     return this.completedReps() + this.reps();
   }
 
+  protected heartRateLabel(): string {
+    const bpm = this.heartRate();
+    const zone = this.telemetry.zone();
+    return bpm === null || zone === null ? 'No heart-rate sensor' : `${bpm} bpm · Zone ${zone}`;
+  }
+
+  protected heartRateCaption(): string {
+    const source = this.telemetry.heartRateSource();
+    return source ? `${source.label} · Live` : 'Pair a sensor in Devices';
+  }
+
+  private sensorsUsed(): string {
+    const hr = this.telemetry.heartRateSource()?.label;
+    return hr ? `${hr} & VitPose` : 'VitPose';
+  }
+
   protected isLastSet(): boolean {
     return this.setNumber() >= this.totalSets && this.movementIndex() >= MORNING_STRENGTH_PLAN.length - 1;
   }
@@ -535,6 +562,7 @@ export class TrainPageComponent implements OnDestroy {
     this.phase.set('active');
     this.reflectionNote.set('');
     this.saveError.set(null);
+    this.telemetry.resetSession();
     this.activeCue.set('Chest proud, smooth descent — great knee tracking.');
     this.restartTracker();
   }
@@ -573,7 +601,6 @@ export class TrainPageComponent implements OnDestroy {
     this.formScore.set(res.formScorePercent);
     this.activeCue.set(res.cue);
     void this.speaker.speak(res.cue);
-    this.heartRate.update((hr) => Math.min(165, hr + 1));
   }
 
   /** Camera blocked: keep coaching with spoken cues only (L2-010). */
@@ -703,11 +730,11 @@ export class TrainPageComponent implements OnDestroy {
         category: 'Strength',
         dateLabel: 'Mon 23 Nov',
         timeWindowLabel: 'Monday, 23 Nov 2026 · 07:15–07:27 EST',
-        sensorsUsed: 'Polar H10 & VitPose',
+        sensorsUsed: this.sensorsUsed(),
         durationMinutes: Math.max(1, Math.round(this.elapsedSeconds() / 60)),
         totalReps: this.totalSessionReps(),
-        primaryMetricText: `${this.totalSessionReps()} reps · Polar H10`,
-        avgHeartRateBpm: this.heartRate(),
+        primaryMetricText: `${this.totalSessionReps()} reps${this.telemetry.heartRateSource() ? ' · ' + this.telemetry.heartRateSource()?.label : ''}`,
+        avgHeartRateBpm: this.telemetry.averageBpm() ?? 0,
         formScorePercent: this.formScore(),
         recapText:
           'Smooth goblet squat depth and steady 3-1-1 tempo across working sets. Heart rate remained controlled in Zone 3.',

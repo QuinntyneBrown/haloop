@@ -112,7 +112,7 @@ import { SessionCategory, WorkoutHistoryStore } from '../../core/state/workout-h
                   </td>
                   <td>{{ session.dateLabel }}</td>
                   <td class="num">{{ session.durationMinutes }} min</td>
-                  <td class="num">{{ session.avgHeartRateBpm }} bpm</td>
+                  <td class="num">{{ session.avgHeartRateBpm > 0 ? session.avgHeartRateBpm + ' bpm' : '—' }}</td>
                   <td class="num"><span class="badge badge--success">{{ session.formScorePercent }}%</span></td>
                   <td class="row-actions">
                     <a class="btn btn--sm btn--ghost" [routerLink]="['/history', session.id]">View</a>
