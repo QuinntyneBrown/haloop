@@ -211,6 +211,11 @@ export class MlWorkerClient implements OnDestroy {
     );
   }
 
+  /** Boots the ML worker so the first real request is not the one that pays for it; `false` when none exists. */
+  warmUp(): Promise<boolean> {
+    return this.dispatch<{ ok: boolean }>({ type: 'ping' }, () => ({ ok: false })).then((r) => r.ok);
+  }
+
   /** Releases the pose model's memory (e.g. when the camera stops). */
   disposePose(): Promise<void> {
     return this.dispatch<unknown>({ type: 'pose-dispose' }, () => undefined).then(() => undefined);

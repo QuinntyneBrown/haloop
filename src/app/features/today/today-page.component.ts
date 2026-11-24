@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { ScriptureService } from '../../core/scripture/scripture.service';
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
+import { WorkoutSessionStore } from '../../core/state/workout-session.store';
 
 @Component({
   selector: 'app-today-page',
@@ -28,7 +29,7 @@ import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
             Good morning, {{ firstName() }} · 11-day streak · Polar H10 ready (72 bpm)
           </p>
         </div>
-        <a class="btn btn--primary btn--pill" routerLink="/train" data-testid="today-start-session">
+        <a class="btn btn--primary btn--pill" routerLink="/train" (click)="session.start()" data-testid="today-start-session">
           <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" /></svg>
           Start morning session
         </a>
@@ -126,6 +127,7 @@ import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 export class TodayPageComponent {
   protected readonly prefs = inject(PreferencesStore);
   protected readonly history = inject(WorkoutHistoryStore);
+  protected readonly session = inject(WorkoutSessionStore);
   private readonly scripture = inject(ScriptureService);
 
   protected readonly firstName = computed(

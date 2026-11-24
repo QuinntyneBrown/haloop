@@ -112,10 +112,16 @@ export class SquatRepTracker {
   private cue = 'Stand tall in frame, feet shoulder-width apart.';
 
   constructor(
-    private readonly targetReps: number,
+    private targetReps: number,
     startingReps = 0,
   ) {
     this.reps = startingReps;
+  }
+
+  /** Points the tracker at a new movement or set. */
+  retarget(targetReps: number, startingReps = 0): void {
+    this.targetReps = targetReps;
+    this.reset(startingReps);
   }
 
   get currentReps(): number {

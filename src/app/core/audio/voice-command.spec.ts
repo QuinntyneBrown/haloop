@@ -7,6 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MlWorkerClient } from '../ai/ml-worker.client';
 import { TrainPageComponent } from '../../features/train/train-page.component';
+import { settleTrain } from '../../features/train/train-testing';
 import { SttLibrary, createSttEngine } from '../../workers/stt-engine';
 import { UtteranceSegmenter, VOICE_SAMPLE_RATE, VoiceCommandService, matchCommand } from './voice-command.service';
 
@@ -189,7 +190,7 @@ describe('VoiceCommandService', () => {
 });
 
 describe('Train voice commands', () => {
-  function setup() {
+  async function setup() {
     const stop = vi.fn();
     let handler: (c: 'next-set' | 'pause' | 'resume' | 'finish') => void = () => undefined;
     const voice = {
@@ -205,16 +206,16 @@ describe('Train voice commands', () => {
       providers: [
         provideRouter([]),
         { provide: VoiceCommandService, useValue: voice },
-        { provide: MlWorkerClient, useValue: { disposePose: async () => undefined, synthesizeCue: async () => ({ samples: null }) } },
+        { provide: MlWorkerClient, useValue: { disposePose: async () => undefined, warmUp: async () => true, synthesizeCue: async () => ({ samples: null }) } },
       ],
     });
     const fixture = TestBed.createComponent(TrainPageComponent);
-    fixture.detectChanges();
+    await settleTrain(fixture);
     return { fixture, voice, stop, say: (c: Parameters<typeof handler>[0]) => handler(c), host: fixture.nativeElement as HTMLElement };
   }
 
   it('drives pause, resume, next set and finish from recognized commands (L2-009)', async () => {
-    const { fixture, voice, stop, say, host } = setup();
+    const { fixture, voice, stop, say, host } = await setup();
     // The mocked service reports "listening", so exercise the handler registration path directly.
     await (fixture.componentInstance as unknown as { enableVoice(): Promise<void> }).enableVoice();
     expect(voice.start).toHaveBeenCalledTimes(1);
@@ -241,8 +242,8 @@ describe('Train voice commands', () => {
     expect(stop).toHaveBeenCalled();
   });
 
-  it('releases the microphone on a manual pause (L2-009)', () => {
-    const { fixture, stop, host } = setup();
+  it('releases the microphone on a manual pause (L2-009)', async () => {
+    const { fixture, stop, host } = await setup();
     host.querySelector<HTMLButtonElement>('[data-testid="train-pause"]')!.click();
     expect(stop).toHaveBeenCalled();
     fixture.destroy();

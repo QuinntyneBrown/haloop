@@ -8,6 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MlWorkerClient, PoseFrameOutput } from '../ai/ml-worker.client';
 import { TrainPageComponent } from '../../features/train/train-page.component';
+import { settleTrain } from '../../features/train/train-testing';
 import { VitPoseLibrary, createVitPoseEngine } from '../../workers/vitpose-engine';
 import { COCO, Keypoint, SquatRepTracker, jointAngle, kneeAngle } from './pose-math';
 import { PoseSession, centerCrop, mapKeypointToDisplay } from './pose-session';
@@ -256,7 +257,7 @@ describe('Train camera lifecycle', () => {
     }
   }
 
-  function setup() {
+  async function setup() {
     const track = new FakeTrack();
     const getUserMedia = vi.fn(async () => ({ getTracks: () => [track] }) as unknown as MediaStream);
     vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia } });
@@ -268,26 +269,27 @@ describe('Train camera lifecycle', () => {
           useValue: {
             detectPose: async () => ({ keypoints: null, device: null, inferenceMs: 0 }),
             disposePose: async () => undefined,
+            warmUp: async () => true,
             stepPose: async () => ({ completedReps: 9, formScorePercent: 95, cue: 'ok', backend: 'WebGPU' }),
           },
         },
       ],
     });
     const fixture = TestBed.createComponent(TrainPageComponent);
-    fixture.detectChanges();
+    await settleTrain(fixture);
     return { fixture, track, getUserMedia, host: fixture.nativeElement as HTMLElement };
   }
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('does not request the camera until the user clicks Enable webcam (L2-009)', () => {
-    const { getUserMedia, fixture } = setup();
+  it('does not request the camera until the user clicks Enable webcam (L2-009)', async () => {
+    const { getUserMedia, fixture } = await setup();
     expect(getUserMedia).not.toHaveBeenCalled();
     fixture.destroy();
   });
 
   it('renders the local video preview and stops every track on pause and on destroy (L2-009, L2-027)', async () => {
-    const { fixture, track, getUserMedia, host } = setup();
+    const { fixture, track, getUserMedia, host } = await setup();
 
     host.querySelector<HTMLButtonElement>('[data-testid="train-enable-camera"]')!.click();
     await vi.waitFor(() => {

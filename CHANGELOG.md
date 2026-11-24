@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Train: model warm-up `loading` skeleton, idle `Ready to train on-device` empty state, progression through all four movements (Goblet squats, Incline push-ups, Split squats, Forearm plank hold) across three sets with a live `Up next`, and `QuotaExceededError` handling in `Finish workout?` that shows `Could not save session` with an AI Lab link and keeps the reflection note for retry (#8).
 - Train: hands-free voice commands. The microphone opens only from `Enable voice commands`, speech is segmented on-device and transcribed by `onnx-community/whisper-base` in the ML worker (cache-only, WebGPU with WASM fallback), and `Pause`, `Resume`, `Next set` and `Finish` drive real workout state; the mic is released on manual pause and navigation (#7).
 - Train: spoken coaching cues synthesized locally by Kokoro-82M in the ML worker (`kokoro-js`) and played via Web Audio; the Settings toggle mutes immediately, repeated cues are de-duplicated, and audio-only coaching continues when the camera is blocked (#6).
 - Train: live local camera preview with pose skeleton overlay; frames are transferred as `ImageBitmap` to the ML worker running `onnx-community/vitpose-base-simple` (WebGPU with automatic WASM CPU fallback); rep counts, form score and cues update from joint angles; camera is requested only on a user gesture and every track stops on pause/destroy (#5).
