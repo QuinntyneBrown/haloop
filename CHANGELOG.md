@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Train: live heart rate, Zones 1–5 and cadence from `TelemetryStore` bind into the camera HUD and KPI cards; a sensor dropping mid-workout clears only its own readings without interrupting rep counting or saving, and saved sessions record the true session average (`0`/dash when no sensor) (#9).
 - Train: model warm-up `loading` skeleton, idle `Ready to train on-device` empty state, progression through all four movements (Goblet squats, Incline push-ups, Split squats, Forearm plank hold) across three sets with a live `Up next`, and `QuotaExceededError` handling in `Finish workout?` that shows `Could not save session` with an AI Lab link and keeps the reflection note for retry (#8).
 - Train: hands-free voice commands. The microphone opens only from `Enable voice commands`, speech is segmented on-device and transcribed by `onnx-community/whisper-base` in the ML worker (cache-only, WebGPU with WASM fallback), and `Pause`, `Resume`, `Next set` and `Finish` drive real workout state; the mic is released on manual pause and navigation (#7).
 - Train: spoken coaching cues synthesized locally by Kokoro-82M in the ML worker (`kokoro-js`) and played via Web Audio; the Settings toggle mutes immediately, repeated cues are de-duplicated, and audio-only coaching continues when the camera is blocked (#6).

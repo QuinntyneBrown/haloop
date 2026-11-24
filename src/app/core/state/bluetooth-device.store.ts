@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SystemStatusStore } from './system-status.store';
+import { TelemetryStore } from './telemetry.store';
 import { validateDeviceLabel } from '../security/sanitize';
 
 export interface WearableDevice {
@@ -36,10 +37,17 @@ const INITIAL_DEVICES: readonly WearableDevice[] = [
 @Injectable({ providedIn: 'root' })
 export class BluetoothDeviceStore {
   private readonly systemStatus = inject(SystemStatusStore);
+  private readonly telemetry = inject(TelemetryStore);
 
   readonly devices = signal<readonly WearableDevice[]>(INITIAL_DEVICES);
   readonly toast = signal<DeviceToast | null>(null);
   readonly pairingBusy = signal<boolean>(false);
+
+  constructor() {
+    // The default device list mirrors a paired Polar H10 strap that is already streaming (matches the mocks);
+    // live GATT notifications replace these readings as soon as a sensor reports.
+    this.telemetry.ingestHeartRate(134, { id: 'polar-h10', label: 'Polar H10' });
+  }
 
   async pairSensor(sensorId: string, customLabel: string, role: string): Promise<string | null> {
     const err = validateDeviceLabel(customLabel);
@@ -85,6 +93,11 @@ export class BluetoothDeviceStore {
     );
     this.syncCount();
     if (changed) {
+      if (changed.connected) {
+        this.telemetry.sensorConnected(changed.id);
+      } else {
+        this.telemetry.sensorDisconnected(changed.id);
+      }
       this.toast.set(
         changed.connected
           ? {

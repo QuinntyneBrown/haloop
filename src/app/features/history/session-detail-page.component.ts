@@ -41,7 +41,7 @@ import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
         </div>
         <div class="card stat">
           <span class="stat__label">Avg heart rate</span>
-          <span class="stat__value">{{ s.avgHeartRateBpm }} bpm</span>
+          <span class="stat__value">{{ s.avgHeartRateBpm > 0 ? s.avgHeartRateBpm + ' bpm' : '—' }}</span>
         </div>
       </section>
 
