@@ -99,6 +99,23 @@ describe('Kokoro TTS engine', () => {
     expect((await engine.synthesize('Hello again')).samples).not.toBeNull();
   });
 
+  it('skips synthesis without loading the library when the weights are not cached (L2-027)', async () => {
+    const loadLibrary = vi.fn(async () => fakeLibrary().lib);
+    const engine = createTtsEngine({ loadLibrary, isCached: async () => false });
+    const result = await engine.synthesize('Hello');
+    expect(result.samples).toBeNull();
+    expect(result.reason).toContain('not downloaded');
+    expect(loadLibrary).not.toHaveBeenCalled();
+  });
+
+  it('closes remote and local model access before loading so a cue never reaches the network (L2-027)', async () => {
+    const { lib } = fakeLibrary();
+    const env = { allowRemoteModels: true, allowLocalModels: true };
+    const engine = createTtsEngine({ loadLibrary: async () => ({ ...lib, env }) });
+    await engine.synthesize('Hello');
+    expect(env).toEqual({ allowRemoteModels: false, allowLocalModels: false });
+  });
+
   it('rejects empty cues and caps cue length (L2-028)', async () => {
     expect(normalizeCueText('   \n\t ')).toBe('');
     expect(normalizeCueText('a'.repeat(500))).toHaveLength(280);

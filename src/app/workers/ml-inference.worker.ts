@@ -95,6 +95,11 @@ const vitpose = createVitPoseEngine({
 
 const tts = createTtsEngine({
   loadLibrary: async () => (await import('kokoro-js')) as unknown as KokoroLibrary,
+  // Transformers.js stores downloaded weights in this Cache Storage bucket.
+  isCached: async () => {
+    const cache = await caches.open('transformers-cache');
+    return (await cache.keys()).some((request) => request.url.includes('Kokoro-82M'));
+  },
 });
 
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
