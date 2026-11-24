@@ -39,7 +39,7 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
         providers: [
-          { provide: MlWorkerClient, useValue: { workerSupported: true, modelCacheStatus: async () => null, ...worker } },
+          { provide: MlWorkerClient, useValue: { workerSupported: true, probeModelStorage: async () => ({ ok: true }), modelCacheStatus: async () => null, ...worker } },
         ],
       });
       return TestBed.inject(ModelRegistryStore);

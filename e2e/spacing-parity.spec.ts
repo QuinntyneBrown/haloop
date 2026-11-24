@@ -3,6 +3,7 @@
 // between docs/mocks/ and http://localhost:4200 at Desktop (1280x800) and Mobile (390x844).
 
 import { expect, test } from '@playwright/test';
+import { installHuggingFaceFixture } from './support/hf-fixture';
 import * as path from 'node:path';
 
 const MOCK_ROOT = path.resolve(process.cwd(), 'docs/mocks');
@@ -79,6 +80,7 @@ const PAGES = [
 ];
 
 test('Spacing parity audit (Desktop 1280x800 & Mobile 390x844)', async ({ page }) => {
+  await installHuggingFaceFixture(page);
   const diffs: string[] = [];
 
   for (const vp of [
@@ -122,6 +124,7 @@ test('Spacing parity audit (Desktop 1280x800 & Mobile 390x844)', async ({ page }
 });
 
 test('Dialog spacing parity audit (Desktop 1280x800 & Mobile 390x844)', async ({ page }) => {
+  await installHuggingFaceFixture(page);
   const diffs: string[] = [];
   const selectors = ['.dialog', '.dialog__panel', '.dialog__header', '.dialog__body', '.dialog__footer'];
   const dialogs = [

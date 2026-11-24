@@ -23,6 +23,16 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
 
   await installHuggingFaceFixture(page);
 
+  // Chrome's Writer API is flag-gated: report it unavailable until the user "enables the flag", then available.
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown>;
+    let enabled = false;
+    w['Writer'] = { availability: async () => (enabled ? 'available' : 'unavailable') };
+    w['__enableWriter'] = () => {
+      enabled = true;
+    };
+  });
+
   // Headless Chromium has no Bluetooth chooser, so stand in a heart-rate strap that streams 138 bpm.
   await page.addInitScript(() => {
     const characteristic = (bytes: number[]) => {
@@ -151,7 +161,12 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
   await page.getByTestId('ailab-writer-flag-btn').click();
   await expect(page.getByTestId('chrome-flags-dialog')).toBeVisible();
   await page.waitForTimeout(400);
+  // First re-check: the flag is still off, so the dialog explains and stays open.
   await page.getByTestId('chrome-flags-recheck').click();
+  await expect(page.getByTestId('chrome-flags-result')).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __enableWriter: () => void }).__enableWriter());
+  await page.getByTestId('chrome-flags-recheck').click();
+  await expect(page.getByTestId('chrome-flags-dialog')).toBeHidden();
   await page.waitForTimeout(400);
 
   // The Qwen2.5-0.5B-Instruct row performs a real ~480 MB Hugging Face download, so this hermetic walkthrough

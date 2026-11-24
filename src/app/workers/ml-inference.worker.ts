@@ -36,6 +36,7 @@ export type WorkerRequest =
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
   | { id: string; type: 'qwen-remove' }
   | { id: string; type: 'model-status'; modelId: string }
+  | { id: string; type: 'storage-probe' }
   | { id: string; type: 'model-download'; modelId: string }
   | { id: string; type: 'model-cancel'; modelId: string }
   | { id: string; type: 'model-remove'; modelId: string }
@@ -80,6 +81,7 @@ export type WorkerResponse =
   | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string; restart?: true }
   | { id: string; type: 'qwen-remove'; ok: boolean; reason?: string }
   | { id: string; type: 'model-status'; cached: boolean }
+  | { id: string; type: 'storage-probe'; ok: boolean; reason?: string }
   | { id: string; type: 'model-download'; ok: boolean; paused?: boolean; reason?: string }
   | { id: string; type: 'model-cancel' }
   | { id: string; type: 'model-remove'; ok: boolean; reason?: string }
@@ -308,6 +310,27 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
         const res: WorkerResponse = { id: data.id, type: 'qwen-generate', reflection: QWEN_REFLECTION, ...result };
         postMessage(res);
       });
+      break;
+    }
+
+    case 'storage-probe': {
+      void (async () => {
+        try {
+          // Cache Storage holds the weights; OPFS is probed too because private windows block both.
+          await caches.open('transformers-cache');
+          await navigator.storage?.getDirectory?.();
+          const res: WorkerResponse = { id: data.id, type: 'storage-probe', ok: true };
+          postMessage(res);
+        } catch (error) {
+          const res: WorkerResponse = {
+            id: data.id,
+            type: 'storage-probe',
+            ok: false,
+            reason: error instanceof Error ? error.message : String(error),
+          };
+          postMessage(res);
+        }
+      })();
       break;
     }
 

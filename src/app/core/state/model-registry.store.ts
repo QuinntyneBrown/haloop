@@ -81,6 +81,10 @@ export class ModelRegistryStore {
 
   readonly models = signal<readonly OpenModelEntry[]>(INITIAL_MODELS);
   readonly toasts = signal<readonly ModelToast[]>([]);
+  /** False until the real cache has been inspected, so AI Lab can show its loading skeleton. */
+  readonly loaded = signal<boolean>(false);
+  /** Why on-device model storage could not be read (e.g. blocked OPFS in private browsing), else `null`. */
+  readonly storageError = signal<string | null>(null);
 
   readonly cachedMb = computed(() =>
     this.models()
@@ -95,10 +99,30 @@ export class ModelRegistryStore {
   );
 
   constructor() {
-    void this.syncCacheState();
+    void this.checkStorage();
     if (typeof window !== 'undefined') {
       // Losing the connection pauses running downloads; finished files stay cached for a later resume.
       window.addEventListener('offline', () => void this.pauseDownloads());
+    }
+  }
+
+  /** Probes model storage, then reflects which models are really cached; also backs `Retry check`. */
+  async checkStorage(): Promise<void> {
+    this.loaded.set(false);
+    try {
+      const probe = await this.worker.probeModelStorage();
+      this.storageError.set(probe.ok ? null : (probe.reason ?? 'Storage is blocked in this window.'));
+      if (probe.ok) {
+        await this.syncCacheState();
+      } else {
+        // Nothing can be read or written, so no model can honestly be reported as cached.
+        this.models.update((list) =>
+          list.map((m) => (m.state === 'ready' ? { ...m, state: 'not-downloaded', downloadedMb: 0 } : m)),
+        );
+        this.syncSystemStatus();
+      }
+    } finally {
+      this.loaded.set(true);
     }
   }
 
@@ -203,9 +227,10 @@ export class ModelRegistryStore {
     this.pushToast('success', `${target.title} ready on-device`, `${target.sizeMb} MB cached locally.`);
   }
 
-  async removeModel(id: string): Promise<void> {
+  /** Removes a model's cached files. Resolves with the failure reason (also toasted) so the dialog can stay open. */
+  async removeModel(id: string): Promise<{ ok: boolean; reason?: string }> {
     const target = this.models().find((m) => m.id === id);
-    if (!target) return;
+    if (!target) return { ok: false, reason: 'Unknown model.' };
 
     if (this.worker.workerSupported) {
       const result = id === QWEN_MODEL_ID ? await this.worker.removeQwen() : await this.worker.removeModelFiles(id);
@@ -215,7 +240,7 @@ export class ModelRegistryStore {
           `Could not remove ${target.title}`,
           `${target.repoId} is still cached on this device. Try again.`,
         );
-        return;
+        return { ok: false, reason: result.reason ?? `${target.repoId} is still cached on this device.` };
       }
     } else {
       await new Promise((r) => setTimeout(r, 150));
@@ -226,6 +251,7 @@ export class ModelRegistryStore {
     );
     this.syncSystemStatus();
     this.pushToast('success', `Removed ${target.title}`, `${target.sizeMb} MB freed from your local cache.`);
+    return { ok: true };
   }
 
   dismissToast(id: string): void {
