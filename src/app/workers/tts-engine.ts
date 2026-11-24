@@ -20,6 +20,8 @@ export interface KokoroInstance {
 
 /** The slice of `kokoro-js` this engine depends on. */
 export interface KokoroLibrary {
+  /** Transformers.js environment used by `kokoro-js`. */
+  readonly env?: { allowRemoteModels: boolean; allowLocalModels: boolean };
   readonly KokoroTTS: {
     from_pretrained(id: string, options: { dtype: string; device: 'wasm' | 'webgpu' }): Promise<KokoroInstance>;
   };
@@ -33,6 +35,11 @@ export interface TtsResult {
 
 export interface TtsEngineDeps {
   readonly loadLibrary: () => Promise<KokoroLibrary>;
+  /**
+   * Whether the Kokoro weights are already in the local model cache. When they are not, a cue is skipped
+   * without importing the library or touching the network (L2-027). Defaults to assuming they are cached.
+   */
+  readonly isCached?: () => Promise<boolean>;
 }
 
 export interface TtsEngine {
@@ -52,7 +59,14 @@ export function createTtsEngine(deps: TtsEngineDeps): TtsEngine {
     model ??= deps
       .loadLibrary()
       // WASM q8 is the reliable path for Kokoro: its WebGPU build only supports fp32 and is far larger.
-      .then((lib) => lib.KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: KOKORO_DTYPE, device: 'wasm' }));
+      .then((lib) => {
+        // Cache-only: speaking a cue must never reach the network (L2-027). Weights arrive via an explicit download.
+        if (lib.env) {
+          lib.env.allowRemoteModels = false;
+          lib.env.allowLocalModels = false;
+        }
+        return lib.KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: KOKORO_DTYPE, device: 'wasm' });
+      });
     model.catch(() => {
       model = null; // a failed load (e.g. offline, not cached) can be retried on the next cue
     });
@@ -68,6 +82,9 @@ export function createTtsEngine(deps: TtsEngineDeps): TtsEngine {
       // Cues are synthesized one at a time so they never contend for the same ONNX session.
       const run = queue.then(async (): Promise<TtsResult> => {
         try {
+          if (deps.isCached && !(await deps.isCached())) {
+            return { samples: null, sampleRate: 0, reason: 'Kokoro-82M is not downloaded on this device.' };
+          }
           const kokoro = await load();
           const { audio, sampling_rate } = await kokoro.generate(clean, { voice });
           return { samples: audio, sampleRate: sampling_rate };
