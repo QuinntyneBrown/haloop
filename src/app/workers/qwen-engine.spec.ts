@@ -84,12 +84,21 @@ function createFakeLibrary(): FakeLibrary {
           throw new Error('GPU device lost');
         }
         lib.prompts.push({ remoteAllowed: lib.env.allowRemoteModels, options: generateOptions });
+        const streamer = generateOptions['streamer'] as { options: { callback_function: (text: string) => void } } | undefined;
+        for (const piece of ['  Brace, ', 'breathe, ', 'and move with patience.  ']) streamer?.options.callback_function(piece);
         return [{ generated_text: [{ role: 'assistant', content: '  Brace, breathe, and move with patience.  ' }] }];
       }) as QwenPipeline;
+      (pipe as { tokenizer?: unknown }).tokenizer = {};
       pipe.dispose = async () => {
         lib.disposed += 1;
       };
       return pipe;
+    },
+    TextStreamer: class {
+      constructor(
+        readonly tokenizer: unknown,
+        readonly options: { callback_function: (text: string) => void },
+      ) {}
     },
     ModelRegistry: {
       is_pipeline_cached: async () => lib.cached,
@@ -166,6 +175,29 @@ describe('Qwen2.5-0.5B-Instruct on-device engine', () => {
     expect(result.reply).toContain('20% lighter');
     expect(result.reason).toContain('not found locally');
     expect(lib.calls.every((c) => !c.remoteAllowed)).toBe(true);
+  });
+
+  it('streams generated tokens to the caller as they are produced (L2-012, L2-030)', async () => {
+    const lib = createFakeLibrary();
+    const { engine } = createEngine(lib);
+    await engine.download('AutoWebGpu', () => undefined);
+
+    const chunks: string[] = [];
+    const result = await engine.generate('Coach me', 'AutoWebGpu', (c) => chunks.push(c));
+
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.join('').trim()).toBe(result.reply);
+    expect(lib.prompts.at(-1)?.options['streamer']).toBeDefined();
+  });
+
+  it('does not attach a streamer when no chunk callback is given (L2-012)', async () => {
+    const lib = createFakeLibrary();
+    const { engine } = createEngine(lib);
+    await engine.download('AutoWebGpu', () => undefined);
+
+    await engine.generate('Coach me', 'AutoWebGpu');
+
+    expect(lib.prompts.at(-1)?.options['streamer']).toBeUndefined();
   });
 
   it('generates on WebGPU from the cache without remote access (L2-012, L2-027)', async () => {
