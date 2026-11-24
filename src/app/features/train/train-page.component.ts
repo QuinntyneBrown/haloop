@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  computed,
   OnDestroy,
   effect,
   inject,
@@ -16,6 +17,11 @@ import { VoiceCommand, VoiceCommandService } from '../../core/audio/voice-comman
 import { PreferencesStore } from '../../core/state/preferences.store';
 import { WorkoutHistoryStore } from '../../core/state/workout-history.store';
 import { WorkoutPlanStore } from '../../core/state/workout-plan.store';
+import {
+  MORNING_STRENGTH_PLAN,
+  SETS_PER_MOVEMENT,
+  WorkoutSessionStore,
+} from '../../core/state/workout-session.store';
 import { validateReflectionNote } from '../../core/security/sanitize';
 import { SKELETON_EDGES, SquatRepTracker } from '../../core/pose/pose-math';
 import { PoseFrameUpdate, PoseSession, mapKeypointToDisplay } from '../../core/pose/pose-session';
@@ -34,11 +40,44 @@ const AUDIO_ONLY_CUES: readonly string[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, RouterLink],
   template: `
+    @if (warmingUp()) {
+      <div class="stack" role="status" aria-busy="true" aria-label="Loading on-device models" data-testid="train-loading">
+        <div class="stack stack--sm">
+          <span class="skeleton skeleton--text" style="width:40%;"></span>
+          <span class="skeleton skeleton--text" style="width:65%;"></span>
+        </div>
+        <div class="skeleton skeleton--rect" style="height:20rem;width:100%;"></div>
+        <div class="kpi-grid">
+          @for (n of [1, 2, 3]; track n) {
+            <div class="card stack stack--sm">
+              <span class="skeleton skeleton--text" style="width:50%;"></span>
+              <span class="skeleton skeleton--title"></span>
+            </div>
+          }
+        </div>
+        <p class="text-muted">Warming up VitPose, Whisper and Kokoro on this device…</p>
+      </div>
+    } @else if (session.stage() === 'idle') {
+      <div class="empty" data-testid="train-empty">
+        <div class="empty__icon" aria-hidden="true">
+          <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+        </div>
+        <h2 class="empty__title">Ready to train on-device</h2>
+        <p class="empty__text">Pick a guided workout or start a free-form session. Pose estimation runs locally on your GPU—video never leaves this tab.</p>
+        <div class="empty__actions">
+          <button type="button" class="btn btn--primary btn--pill" (click)="startWorkout()" data-testid="train-start-workout">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+            Start Morning Strength
+          </button>
+          <a class="btn btn--pill" routerLink="/coach">Ask Coach for a plan</a>
+        </div>
+      </div>
+    } @else {
     <div class="cluster cluster--between">
       <div>
         <p class="overline">Morning Strength &amp; Mobility · Set {{ setNumber() }} of {{ totalSets }}</p>
         <p class="text-muted" style="margin-top:var(--space-1);">
-          Goblet squats · VitPose {{ backendLabel() }} (30 fps) · Whisper voice commands listening
+          {{ movement().name }} · VitPose {{ backendLabel() }} (30 fps) · Whisper voice commands listening
         </p>
       </div>
       <div class="cluster">
@@ -148,8 +187,8 @@ const AUDIO_ONLY_CUES: readonly string[] = [
           </div>
         </div>
         <div class="camera-stage__center">
-          <span class="overline" style="color:var(--color-sidebar-muted);">Goblet squats</span>
-          <div class="camera-stage__reps" aria-live="polite" data-testid="train-reps">{{ reps() }} / 12</div>
+          <span class="overline" style="color:var(--color-sidebar-muted);" data-testid="train-movement">{{ movement().name }}</span>
+          <div class="camera-stage__reps" aria-live="polite" data-testid="train-reps">{{ reps() }} / {{ movement().targetReps }}</div>
           <p class="text-sm" style="color:var(--color-sidebar-fg);">“{{ activeCue() }}”</p>
           <div class="cluster" style="margin-top:var(--space-2); justify-content:center;">
             <button
@@ -160,6 +199,15 @@ const AUDIO_ONLY_CUES: readonly string[] = [
               data-testid="train-log-rep"
             >
               + Count rep (VitPose Worker)
+            </button>
+            <button
+              type="button"
+              class="btn btn--sm btn--pill"
+              (click)="nextSet()"
+              [disabled]="phase() !== 'active'"
+              data-testid="train-next-set"
+            >
+              {{ isLastSet() ? 'Finish workout' : 'Next set' }}
             </button>
             <button
               type="button"
@@ -191,10 +239,12 @@ const AUDIO_ONLY_CUES: readonly string[] = [
         </div>
         <div class="card stat">
           <span class="stat__label">Up next</span>
-          <span class="stat__value" style="font-size:var(--font-size-lg);">Incline push-ups</span>
-          <span class="stat__delta text-muted">3 × 10 reps</span>
+          <span class="stat__value" style="font-size:var(--font-size-lg);" data-testid="train-up-next">{{ upNext().name }}</span>
+          <span class="stat__delta text-muted">{{ upNext().detail }}</span>
         </div>
       </section>
+    }
+
     }
 
     @if (finishDialogOpen()) {
@@ -230,6 +280,26 @@ const AUDIO_ONLY_CUES: readonly string[] = [
           </div>
 
           <div class="dialog__body stack">
+            @if (saveError(); as saveFailure) {
+              <div class="alert alert--danger" role="alert" data-testid="end-workout-save-error">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <div class="alert__body">
+                  <div class="alert__title">Could not save session</div>
+                  <p class="text-sm">
+                    @if (saveFailure === 'quota') {
+                      Local storage quota is full. Free space in
+                      <a routerLink="/lab" data-testid="end-workout-open-lab">AI Lab</a> or retry saving. Your note is kept.
+                    } @else {
+                      Something went wrong saving to local storage. Retry saving; your note is kept.
+                    }
+                  </p>
+                </div>
+              </div>
+            }
             <div class="well cluster cluster--between">
               <span class="text-sm"><strong>{{ formattedElapsed() }}</strong> elapsed</span>
               <span class="text-sm"><strong>{{ totalSessionReps() }}</strong> reps</span>
@@ -298,8 +368,14 @@ export class TrainPageComponent implements OnDestroy {
   protected readonly saving = signal<boolean>(false);
 
   protected readonly poseStatus = signal<string | null>(null);
+  protected readonly session = inject(WorkoutSessionStore);
+  protected readonly warmingUp = signal<boolean>(true);
   protected readonly setNumber = signal<number>(2);
-  protected readonly totalSets = 3;
+  protected readonly totalSets = SETS_PER_MOVEMENT;
+  protected readonly movementIndex = signal<number>(0);
+  protected readonly movement = computed(() => MORNING_STRENGTH_PLAN[this.movementIndex()]);
+  protected readonly saveError = signal<'quota' | 'generic' | null>(null);
+  private readonly completedReps = signal<number>(24);
 
   private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
   private readonly overlayRef = viewChild<ElementRef<HTMLCanvasElement>>('overlay');
@@ -311,6 +387,16 @@ export class TrainPageComponent implements OnDestroy {
   private audioOnlyIndex = 0;
 
   constructor() {
+    void this.mlWorker.warmUp().finally(() => this.warmingUp.set(false));
+    // A fresh start from Today or the empty state resets the counters.
+    let lastToken = this.session.startToken();
+    effect(() => {
+      const token = this.session.startToken();
+      if (token !== lastToken) {
+        lastToken = token;
+        this.resetWorkout();
+      }
+    });
     // Start pose estimation once the <video> element exists for an active stream.
     effect(() => {
       const video = this.videoRef()?.nativeElement;
@@ -338,7 +424,7 @@ export class TrainPageComponent implements OnDestroy {
   private startPose(video: HTMLVideoElement, stream: MediaStream): void {
     video.srcObject = stream;
     void Promise.resolve(video.play()).catch(() => undefined);
-    const tracker = new SquatRepTracker(12, this.reps());
+    const tracker = new SquatRepTracker(this.movement().targetReps, this.reps());
     this.tracker = tracker;
     this.poseStatus.set('Loading VitPose…');
     this.poseSession = new PoseSession({
@@ -361,7 +447,7 @@ export class TrainPageComponent implements OnDestroy {
     }
     const backend = update.device === 'webgpu' ? 'WebGPU' : 'WASM CPU';
     this.poseStatus.set(`VitPose ${backend} · ${Math.round(update.fps)} fps`);
-    if (update.feedback) {
+    if (update.feedback && this.movement().tracked) {
       this.reps.set(update.feedback.reps);
       if (update.feedback.formScorePercent > 0) {
         this.formScore.set(update.feedback.formScorePercent);
@@ -423,7 +509,34 @@ export class TrainPageComponent implements OnDestroy {
   }
 
   protected totalSessionReps(): number {
-    return 24 + this.reps();
+    return this.completedReps() + this.reps();
+  }
+
+  protected isLastSet(): boolean {
+    return this.setNumber() >= this.totalSets && this.movementIndex() >= MORNING_STRENGTH_PLAN.length - 1;
+  }
+
+  protected upNext(): { name: string; detail: string } {
+    const next = MORNING_STRENGTH_PLAN[this.movementIndex() + 1];
+    return next ? { name: next.name, detail: next.prescription } : { name: 'Cool-down', detail: 'Finish and save your session' };
+  }
+
+  protected startWorkout(): void {
+    this.session.start();
+  }
+
+  private resetWorkout(): void {
+    this.movementIndex.set(0);
+    this.setNumber.set(1);
+    this.reps.set(0);
+    this.completedReps.set(0);
+    this.elapsedSeconds.set(0);
+    this.formScore.set(95);
+    this.phase.set('active');
+    this.reflectionNote.set('');
+    this.saveError.set(null);
+    this.activeCue.set('Chest proud, smooth descent — great knee tracking.');
+    this.restartTracker();
   }
 
   protected formattedElapsed(): string {
@@ -453,8 +566,9 @@ export class TrainPageComponent implements OnDestroy {
   }
 
   protected async logRep(): Promise<void> {
-    if (this.reps() >= 12) return;
-    const res = await this.mlWorker.stepPose(this.reps(), 12, this.backendLabel());
+    const target = this.movement().targetReps;
+    if (this.reps() >= target) return;
+    const res = await this.mlWorker.stepPose(this.reps(), target, this.backendLabel());
     this.reps.set(res.completedReps);
     this.formScore.set(res.formScorePercent);
     this.activeCue.set(res.cue);
@@ -519,18 +633,25 @@ export class TrainPageComponent implements OnDestroy {
   }
 
   private restartTracker(): void {
-    this.tracker?.reset(0);
+    this.tracker?.retarget(this.movement().targetReps, 0);
   }
 
-  /** Starts the next set: resets the rep count and tracker. */
+  /** Completes the current set and advances through every planned movement, finishing after the last (L2-010). */
   protected nextSet(): void {
-    if (this.setNumber() >= this.totalSets) {
+    if (this.isLastSet()) {
       this.openFinishDialog();
       return;
     }
-    this.setNumber.update((n) => n + 1);
+    this.completedReps.update((n) => n + this.reps());
+    if (this.setNumber() < this.totalSets) {
+      this.setNumber.update((n) => n + 1);
+    } else {
+      this.movementIndex.update((i) => i + 1);
+      this.setNumber.set(1);
+    }
     this.reps.set(0);
-    this.activeCue.set('Set ' + this.setNumber() + ' — chest proud, smooth descent.');
+    const movement = this.movement();
+    this.activeCue.set(`${movement.name} · set ${this.setNumber()} of ${this.totalSets} — smooth and controlled.`);
     this.restartTracker();
   }
 
@@ -594,9 +715,15 @@ export class TrainPageComponent implements OnDestroy {
         verseReference: 'Isaiah 40:31 · KJV',
       });
       this.voice.stop();
+      this.saveError.set(null);
+      this.session.end();
       this.stopMediaStream();
       this.finishDialogOpen.set(false);
       await this.router.navigate(['/history', id]);
+    } catch (error) {
+      // The dialog stays open with the note intact so the user can free space and retry (L2-026).
+      const quota = error instanceof DOMException && (error.name === 'QuotaExceededError' || error.code === 22);
+      this.saveError.set(quota ? 'quota' : 'generic');
     } finally {
       this.saving.set(false);
     }

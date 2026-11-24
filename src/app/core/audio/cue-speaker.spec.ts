@@ -8,6 +8,7 @@ import { provideRouter } from '@angular/router';
 import { MlWorkerClient, SpeechOutput } from '../ai/ml-worker.client';
 import { PreferencesStore } from '../state/preferences.store';
 import { TrainPageComponent } from '../../features/train/train-page.component';
+import { settleTrain } from '../../features/train/train-testing';
 import { SettingsPageComponent } from '../../features/settings/settings-page.component';
 import { KokoroLibrary, createTtsEngine, normalizeCueText } from '../../workers/tts-engine';
 import { CUE_REPEAT_WINDOW_MS, CueSpeakerService } from './cue-speaker.service';
@@ -196,11 +197,11 @@ describe('Train audio-only coaching and Settings toggle', () => {
     });
     const synth = vi.fn(async () => ({ samples: new Float32Array([0.1]), sampleRate: 24000 }));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: MlWorkerClient, useValue: { synthesizeCue: synth, disposePose: async () => undefined } }],
+      providers: [provideRouter([]), { provide: MlWorkerClient, useValue: { synthesizeCue: synth, disposePose: async () => undefined, warmUp: async () => true } }],
     });
     const fixture = TestBed.createComponent(TrainPageComponent);
     const host = fixture.nativeElement as HTMLElement;
-    fixture.detectChanges();
+    await settleTrain(fixture);
 
     host.querySelector<HTMLButtonElement>('[data-testid="train-enable-camera"]')!.click();
     await vi.waitFor(() => {

@@ -9,6 +9,7 @@ import { HaloopDbService } from '../../core/storage/haloop-db.service';
 import { LIGHT_LOAD_WARM_UP, WorkoutPlanStore } from '../../core/state/workout-plan.store';
 import { CoachPageComponent } from './coach-page.component';
 import { TrainPageComponent } from '../train/train-page.component';
+import { settleTrain } from '../train/train-testing';
 
 describe('Coach loading and workout hand-off', () => {
   it('renders skeleton placeholders until coachMessages finishes loading (L2-012)', async () => {
@@ -79,7 +80,7 @@ describe('Coach loading and workout hand-off', () => {
     TestBed.inject(WorkoutPlanStore).apply(LIGHT_LOAD_WARM_UP);
     const fixture = TestBed.createComponent(TrainPageComponent);
     const host = fixture.nativeElement as HTMLElement;
-    fixture.detectChanges();
+    await settleTrain(fixture);
 
     const banner = host.querySelector('[data-testid="train-adjustment-banner"]')!;
     expect(banner.textContent).toContain('−20% load');

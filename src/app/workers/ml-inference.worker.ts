@@ -20,6 +20,7 @@ export type WorkerRequest =
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
   | { id: string; type: 'pose-frame'; bitmap: ImageBitmap; preferredBackend?: VitPosePreferredBackend }
   | { id: string; type: 'pose-dispose' }
+  | { id: string; type: 'ping' }
   | { id: string; type: 'tts-speak'; text: string; voice?: string }
   | { id: string; type: 'stt-transcribe'; samples: Float32Array; preferredBackend?: SttPreferredBackend }
   | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend; stream?: boolean }
@@ -39,6 +40,7 @@ export type WorkerResponse =
       reason?: string;
     }
   | { id: string; type: 'pose-dispose' }
+  | { id: string; type: 'ping'; ok: true }
   | { id: string; type: 'tts-speak'; samples: Float32Array | null; sampleRate: number; reason?: string }
   | { id: string; type: 'stt-transcribe'; text: string | null; device: SttDevice | null; reason?: string }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
@@ -155,6 +157,12 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
         const res: WorkerResponse = { id: data.id, type: 'pose-frame', ...result };
         postMessage(res);
       });
+      break;
+    }
+
+    case 'ping': {
+      const res: WorkerResponse = { id: data.id, type: 'ping', ok: true };
+      postMessage(res);
       break;
     }
 
