@@ -24,6 +24,12 @@ export interface SpeechOutput {
   readonly reason?: string;
 }
 
+export interface TranscriptionOutput {
+  /** Recognized text, or `null` when speech recognition is unavailable. */
+  readonly text: string | null;
+  readonly reason?: string;
+}
+
 export interface WorkerSearchOutput {
   readonly reference: string;
   readonly text: string;
@@ -192,6 +198,17 @@ export class MlWorkerClient implements OnDestroy {
       sampleRate: 0,
       reason: 'The ML Web Worker is unavailable.',
     }));
+  }
+
+  /** Transcribes a 16 kHz mono utterance locally with Whisper; the buffer is transferred, never uploaded. */
+  transcribeAudio(samples: Float32Array, preferredBackend: QwenPreferredBackend = 'AutoWebGpu'): Promise<TranscriptionOutput> {
+    return this.dispatch<TranscriptionOutput>(
+      { type: 'stt-transcribe', samples, preferredBackend },
+      () => ({ text: null, reason: 'The ML Web Worker is unavailable.' }),
+      undefined,
+      undefined,
+      [samples.buffer],
+    );
   }
 
   /** Releases the pose model's memory (e.g. when the camera stops). */
