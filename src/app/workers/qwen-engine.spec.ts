@@ -6,6 +6,7 @@
 
 import {
   DETERMINISTIC_ENGINE,
+  NOT_PERSISTED_REASON,
   QWEN_DTYPE,
   QWEN_MODEL_ID,
   QwenLibrary,
@@ -326,6 +327,73 @@ describe('Qwen2.5-0.5B-Instruct on-device engine', () => {
     lib.failDevices.clear();
     const retried = await engine.download('WasmCpu', () => undefined);
     expect(retried).toEqual({ ok: true, device: 'wasm' });
+  });
+
+  it('asks for a fresh worker when a failed WebGPU session leaves the runtime unable to load WASM CPU (L2-030)', async () => {
+    const lib = createFakeLibrary();
+    lib.cached = true;
+    lib.failDevices.add('webgpu').add('wasm');
+    let rejected = false;
+    const deps = {
+      loadLibrary: async () => lib,
+      detectWebGpu: async () => true,
+      baseUrl: 'https://haloop.test/app/worker-abc.js',
+      webGpuVerdict: {
+        isRejected: async () => rejected,
+        setRejected: async (value: boolean) => {
+          rejected = value;
+        },
+      },
+    };
+
+    const broken = await createQwenEngine(deps).generate('Coach me', 'AutoWebGpu');
+    expect(broken.engine).toBe(DETERMINISTIC_ENGINE);
+    expect(broken.restart).toBe(true);
+    expect(rejected).toBe(true);
+
+    // The replacement worker reads the remembered verdict and goes straight to WASM CPU.
+    lib.failDevices.delete('wasm');
+    lib.calls.length = 0;
+    const recovered = await createQwenEngine(deps).generate('Coach me', 'AutoWebGpu');
+    expect(recovered.engine).toBe('Qwen2.5-0.5B-Instruct · WASM CPU');
+    expect(recovered.restart).toBeUndefined();
+    expect(lib.calls.map((c) => c.device)).toEqual(['wasm']);
+  });
+
+  it('does not blame the GPU or ask for a restart when an uncached download fails (L2-027)', async () => {
+    const lib = createFakeLibrary();
+    lib.failDevices.add('webgpu').add('wasm');
+    let rejected = false;
+    const engine = createQwenEngine({
+      loadLibrary: async () => lib,
+      detectWebGpu: async () => true,
+      baseUrl: 'https://haloop.test/app/worker-abc.js',
+      webGpuVerdict: {
+        isRejected: async () => rejected,
+        setRejected: async (value: boolean) => {
+          rejected = value;
+        },
+      },
+    });
+
+    const failed = await engine.download('AutoWebGpu', () => undefined);
+
+    expect(failed.ok).toBe(false);
+    expect(failed.restart).toBeUndefined();
+    expect(rejected).toBe(false);
+  });
+
+  it('fails the download when the browser did not persist the model, instead of reporting Ready (L2-023)', async () => {
+    const lib = createFakeLibrary();
+    // A private window or exhausted quota: the pipeline loads from the network but nothing lands in the cache.
+    lib.ModelRegistry.is_pipeline_cached = async () => false;
+    const { engine } = createEngine(lib, false);
+
+    const result = await engine.download('AutoWebGpu', () => undefined);
+
+    expect(result).toEqual({ ok: false, reason: NOT_PERSISTED_REASON });
+    expect(lib.disposed).toBe(1);
+    expect(lib.env.allowRemoteModels).toBe(false);
   });
 
   it('queues Coach prompts behind an in-flight download so none runs with remote access open (L2-027)', async () => {

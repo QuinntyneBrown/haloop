@@ -40,6 +40,8 @@ export type QwenCacheStatus = boolean | null;
 interface PendingRequest {
   readonly resolve: (value: unknown) => void;
   readonly fallback: () => unknown;
+  readonly payload: Record<string, unknown>;
+  retried: boolean;
   readonly onProgress?: (progress: QwenDownloadProgress) => void;
 }
 
@@ -48,6 +50,8 @@ interface WorkerMessage {
   readonly type?: string;
   readonly loadedBytes?: number;
   readonly totalBytes?: number;
+  /** The worker's ONNX Runtime is unusable; the request must be replayed on a fresh worker. */
+  readonly restart?: boolean;
 }
 
 /**
@@ -80,6 +84,11 @@ export class MlWorkerClient implements OnDestroy {
           request.onProgress?.({ loadedBytes: data.loadedBytes ?? 0, totalBytes: data.totalBytes ?? 0 });
           return;
         }
+        if (data.restart === true && !request.retried) {
+          request.retried = true;
+          this.restartWorker();
+          return;
+        }
         this.pending.delete(data.id);
         request.resolve(data);
       };
@@ -102,6 +111,23 @@ export class MlWorkerClient implements OnDestroy {
     }
   }
 
+  /**
+   * A failed WebGPU session can leave the worker's ONNX Runtime unusable. The worker has already recorded
+   * that this device needs WASM CPU, so a fresh worker succeeds: replay everything still pending on one.
+   */
+  private restartWorker(): void {
+    this.worker?.terminate();
+    this.worker = null;
+    const worker = this.ensureWorker();
+    if (!worker) {
+      this.failWorker();
+      return;
+    }
+    for (const [id, request] of this.pending) {
+      worker.postMessage({ ...request.payload, id });
+    }
+  }
+
   private dispatch<T>(
     payload: Record<string, unknown>,
     fallback: () => T,
@@ -113,7 +139,7 @@ export class MlWorkerClient implements OnDestroy {
     }
     const id = `w-${++this.seq}`;
     return new Promise<T>((resolve) => {
-      this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress });
+      this.pending.set(id, { resolve: (res) => resolve(res as T), fallback, onProgress, payload, retried: false });
       worker.postMessage({ ...payload, id });
     });
   }

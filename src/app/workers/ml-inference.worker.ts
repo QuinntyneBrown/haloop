@@ -32,10 +32,11 @@ export type WorkerResponse =
       engine: string;
       device: QwenDevice | null;
       reason?: string;
+      restart?: true;
     }
   | { id: string; type: 'qwen-status'; cached: boolean }
   | { id: string; type: 'qwen-progress'; loadedBytes: number; totalBytes: number }
-  | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string }
+  | { id: string; type: 'qwen-download'; ok: boolean; device?: QwenDevice; reason?: string; restart?: true }
   | { id: string; type: 'qwen-remove'; ok: boolean; reason?: string }
   | { id: string; type: 'whisper-command'; action: 'next-set' | 'pause' | 'resume' | 'finish' | 'none' };
 
@@ -139,6 +140,10 @@ addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
           postMessage(event);
         })
         .then((result) => {
+          if (!result.ok) {
+            // Diagnostic only: explains why the model could not be cached on this device.
+            console.info(`[Haloop] Qwen2.5-0.5B-Instruct download failed: ${result.reason ?? 'unknown reason'}`);
+          }
           const res: WorkerResponse = { id: data.id, type: 'qwen-download', ...result };
           postMessage(res);
         });

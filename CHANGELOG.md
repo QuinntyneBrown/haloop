@@ -23,4 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Service worker activation no longer deletes non-shell caches, which would have wiped downloaded on-device models on every app-shell update.
+- AI Lab no longer marks the Coach fallback `Ready` when the browser could not persist the downloaded model (for example in a private window or with storage exhausted); the download is reported as failed instead.
+- The Coach fallback now recovers when a failed WebGPU session leaves ONNX Runtime unusable inside the ML Web Worker (seen on a Qualcomm Adreno GPU): the device is remembered as WASM-CPU-only and the request is replayed once on a fresh worker, instead of every prompt silently dropping to the deterministic reply.
 - `MlWorkerClient` settles pending requests with their local fallbacks when the ML Web Worker crashes instead of leaving callers waiting forever.

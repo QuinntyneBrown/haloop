@@ -116,6 +116,44 @@ describe('ML Worker, Chrome AI & BLE GATT Adapters', () => {
       expect(seen).toEqual([1_000, 4_000]);
     });
 
+    it('replays a request on a fresh worker when the worker reports an unusable runtime (L2-030)', async () => {
+      const pending = worker.generateCoachReply('My calf is tight', 'AutoWebGpu');
+      const broken = FakeWorker.last!;
+      const brokenReply = {
+        type: 'qwen-generate',
+        reply: 'rule-based',
+        reflection: 'r',
+        engine: 'Deterministic fallback',
+        device: null,
+        restart: true,
+      };
+
+      broken.reply(brokenReply);
+
+      const fresh = FakeWorker.last!;
+      expect(fresh).not.toBe(broken);
+      expect(broken.terminated).toBe(true);
+      expect(fresh.posted[0]).toEqual(broken.posted[0]);
+
+      fresh.reply({
+        type: 'qwen-generate',
+        reply: 'Ease in with ankle rocks.',
+        reflection: 'r',
+        engine: 'Qwen2.5-0.5B-Instruct · WASM CPU',
+        device: 'wasm',
+      });
+      expect((await pending).engine).toBe('Qwen2.5-0.5B-Instruct · WASM CPU');
+
+      // A second failure is final: the request settles instead of restarting forever.
+      const again = worker.generateCoachReply('Still tight');
+      fresh.reply(brokenReply);
+      const third = FakeWorker.last!;
+      expect(third).not.toBe(fresh);
+      third.reply(brokenReply);
+      expect((await again).engine).toBe('Deterministic fallback');
+      expect(FakeWorker.last).toBe(third);
+    });
+
     it('settles pending requests with local fallbacks when the worker crashes (L2-030)', async () => {
       const reply = worker.generateCoachReply('My calf is tight');
       const status = worker.qwenCacheStatus();

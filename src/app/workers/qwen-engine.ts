@@ -28,6 +28,8 @@ const QWEN_SYSTEM_PROMPT =
  */
 const WEBGPU_PROBE_PROMPT = 'Reply with exactly one word: ready';
 const WEBGPU_PROBE_EXPECTED = /ready/i;
+export const NOT_PERSISTED_REASON =
+  'The browser did not keep the downloaded model in its cache (storage may be full or restricted).';
 const ORT_WASM_BASENAME = 'ort/ort-wasm-simd-threaded.asyncify';
 
 export type QwenDevice = 'webgpu' | 'wasm';
@@ -43,12 +45,15 @@ export interface QwenGenerateResult {
   readonly engine: string;
   readonly device: QwenDevice | null;
   readonly reason?: string;
+  /** Set when this worker's ONNX Runtime is unusable and only a fresh worker can run the model. */
+  readonly restart?: true;
 }
 
 export interface QwenOperationResult {
   readonly ok: boolean;
   readonly device?: QwenDevice;
   readonly reason?: string;
+  readonly restart?: true;
 }
 
 interface QwenChatMessage {
@@ -143,6 +148,7 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
   let loaded: { readonly device: QwenDevice; readonly pipe: QwenPipeline } | null = null;
   let webGpuUnusable = false;
   let remoteOpen = false;
+  let needsRestart = false;
   let queue: Promise<unknown> = Promise.resolve();
   const ortBaseUrl = new URL('ort/', deps.baseUrl).href;
 
@@ -185,6 +191,14 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
       library = null;
     });
     return library;
+  }
+
+  function restartFlag(): { restart?: true } {
+    return needsRestart ? { restart: true } : {};
+  }
+
+  function isCached(lib: QwenLibrary): Promise<boolean> {
+    return lib.ModelRegistry.is_pipeline_cached(QWEN_TASK, QWEN_MODEL_ID, { device: 'wasm', dtype: QWEN_DTYPE });
   }
 
   async function resolveDevice(preferred: QwenPreferredBackend): Promise<QwenDevice> {
@@ -257,7 +271,21 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
         throw error;
       }
       // WebGPU could not create the session or failed its output check — fall back to WASM CPU (L2-030).
-      loaded = { device: 'wasm', pipe: await load('wasm') };
+      // With the weights already cached the failure is a verdict on this GPU rather than on the network,
+      // so remember it: later sessions then load straight onto WASM CPU.
+      const gpuFault = await isCached(lib).catch(() => false);
+      if (gpuFault) {
+        webGpuUnusable = true;
+        await deps.webGpuVerdict?.setRejected(true).catch(() => undefined);
+      }
+      try {
+        loaded = { device: 'wasm', pipe: await load('wasm') };
+      } catch (wasmError) {
+        // A failed WebGPU session can leave ONNX Runtime unusable for the rest of this worker's life,
+        // so even the WASM CPU load fails. Only a fresh worker recovers; ask the client for one.
+        needsRestart = gpuFault;
+        throw wasmError;
+      }
       webGpuUnusable = true;
     }
     return loaded;
@@ -266,11 +294,7 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
   return {
     async status(): Promise<boolean> {
       try {
-        const lib = await getLibrary();
-        return await lib.ModelRegistry.is_pipeline_cached(QWEN_TASK, QWEN_MODEL_ID, {
-          device: 'wasm',
-          dtype: QWEN_DTYPE,
-        });
+        return await isCached(await getLibrary());
       } catch {
         return false;
       }
@@ -308,9 +332,15 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
         setRemoteAccess(lib, true);
         try {
           const { device } = await acquire(lib, preferred, track);
+          // A private window or a full disk lets the model load from the network without persisting it.
+          // Only report success when the weights are really in the cache, so `Ready` is never a lie.
+          if (!(await isCached(lib).catch(() => false))) {
+            await release();
+            return { ok: false, reason: NOT_PERSISTED_REASON };
+          }
           return { ok: true, device };
         } catch (error) {
-          return { ok: false, reason: describeError(error) };
+          return { ok: false, reason: describeError(error), ...restartFlag() };
         } finally {
           setRemoteAccess(lib, false);
         }
@@ -368,6 +398,7 @@ export function createQwenEngine(deps: QwenEngineDeps): QwenEngine {
             engine: DETERMINISTIC_ENGINE,
             device: null,
             reason: describeError(error),
+            ...restartFlag(),
           };
         }
       });
