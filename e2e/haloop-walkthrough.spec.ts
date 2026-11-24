@@ -20,6 +20,41 @@ test('Haloop complete feature walkthrough with video recording', async ({ page }
     }
   });
 
+  // Headless Chromium has no Bluetooth chooser, so stand in a heart-rate strap that streams 138 bpm.
+  await page.addInitScript(() => {
+    const characteristic = (bytes: number[]) => {
+      const target = new EventTarget() as EventTarget & { value?: DataView; startNotifications(): Promise<unknown>; readValue(): Promise<DataView> };
+      target.value = new DataView(new Uint8Array(bytes).buffer);
+      target.startNotifications = async () => {
+        setTimeout(() => target.dispatchEvent(new Event('characteristicvaluechanged')), 50);
+        return target;
+      };
+      target.readValue = async () => new DataView(new Uint8Array([87]).buffer);
+      return target;
+    };
+    const hr = characteristic([0x00, 138]);
+    const battery = characteristic([87]);
+    const gatt = {
+      connected: false,
+      connect: async () => gatt,
+      disconnect: () => undefined,
+      getPrimaryService: async (service: string) => ({
+        getCharacteristic: async (name: string) => {
+          if (service === 'heart_rate' && name === 'heart_rate_measurement') return hr;
+          if (service === 'battery_service' && name === 'battery_level') return battery;
+          throw new DOMException('not found', 'NotFoundError');
+        },
+      }),
+    };
+    Object.defineProperty(navigator, 'bluetooth', {
+      configurable: true,
+      value: {
+        getAvailability: async () => true,
+        requestDevice: async () => Object.assign(new EventTarget(), { id: 'e2e-strap', name: 'E2E Strap', gatt }),
+      },
+    });
+  });
+
   // 1. Onboarding (/welcome) — validation & completion (L2-002)
   await page.goto('/welcome');
   await expect(page.getByRole('heading', { name: 'Welcome to Haloop' })).toBeVisible();
