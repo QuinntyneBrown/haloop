@@ -119,7 +119,7 @@ export function createEmbedEngine(deps: EmbedEngineDeps): EmbedEngine {
       lib.env.allowRemoteModels = false;
       lib.env.allowLocalModels = false;
       const wantGpu = preferred === 'AutoWebGpu' && !webGpuUnusable && (await deps.detectWebGpu());
-      const create = (device: EmbedDevice) => lib.pipeline(MINILM_TASK, MINILM_MODEL_ID, { device, dtype: 'fp32' });
+      const create = (device: EmbedDevice) => lib.pipeline(MINILM_TASK, MINILM_MODEL_ID, { device, dtype: 'q8' });
       if (wantGpu) {
         try {
           return { pipe: await create('webgpu'), device: 'webgpu' as const };

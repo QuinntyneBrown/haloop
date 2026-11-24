@@ -38,7 +38,9 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
     function configure(worker: Partial<MlWorkerClient>): ModelRegistryStore {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [{ provide: MlWorkerClient, useValue: { workerSupported: true, ...worker } }],
+        providers: [
+          { provide: MlWorkerClient, useValue: { workerSupported: true, modelCacheStatus: async () => null, ...worker } },
+        ],
       });
       return TestBed.inject(ModelRegistryStore);
     }
@@ -47,9 +49,7 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
 
     it('shows the Coach fallback as Ready when it is already cached in this browser', async () => {
       const store = configure({ qwenCacheStatus: async () => true });
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(qwen(store).state).toBe('ready');
+      await vi.waitFor(() => expect(qwen(store).state).toBe('ready'));
       expect(store.cachedMb()).toBe(766);
     });
 
@@ -68,7 +68,7 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
 
       const download = store.downloadModel('qwen');
       expect(qwen(store).state).toBe('downloading');
-      expect(qwen(store).downloadedMb).toBe(120);
+      expect(qwen(store).downloadedMb).toBe(119);
 
       release({ ok: true });
       await download;
@@ -94,8 +94,7 @@ describe('Wearables & AI Lab Stores (Slices 6-7)', () => {
         qwenCacheStatus: async () => true,
         removeQwen: async () => ({ ok: false, reason: 'blocked' }),
       });
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.waitFor(() => expect(qwen(store).state).toBe('ready'));
 
       await store.removeModel('qwen');
 

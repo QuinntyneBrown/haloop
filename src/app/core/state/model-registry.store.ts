@@ -3,7 +3,7 @@ import { MlWorkerClient } from '../ai/ml-worker.client';
 import { PreferencesStore } from './preferences.store';
 import { SystemStatusStore } from './system-status.store';
 
-export type ModelCacheState = 'not-downloaded' | 'downloading' | 'ready';
+export type ModelCacheState = 'not-downloaded' | 'downloading' | 'paused' | 'ready';
 
 export interface OpenModelEntry {
   readonly id: string;
@@ -70,7 +70,7 @@ const INITIAL_MODELS: readonly OpenModelEntry[] = [
   },
 ];
 
-/** The only open model whose download, cache state, and removal are backed by the real model cache so far. */
+/** Qwen keeps its own engine-managed cache; every other open model uses the generic worker downloader. */
 const QWEN_MODEL_ID = 'qwen';
 
 @Injectable({ providedIn: 'root' })
@@ -95,26 +95,41 @@ export class ModelRegistryStore {
   );
 
   constructor() {
-    void this.syncQwenCacheState();
+    void this.syncCacheState();
+    if (typeof window !== 'undefined') {
+      // Losing the connection pauses running downloads; finished files stay cached for a later resume.
+      window.addEventListener('offline', () => void this.pauseDownloads());
+    }
   }
 
-  /** Reflects whether Qwen2.5-0.5B-Instruct is really cached in this browser, so `Ready` survives reloads. */
-  private async syncQwenCacheState(): Promise<void> {
-    const cached = await this.worker.qwenCacheStatus();
-    if (cached === null) return;
+  /** Reflects which models are really cached in this browser, so `Ready` is truthful and survives reloads. */
+  private async syncCacheState(): Promise<void> {
+    const statuses = await Promise.all(
+      this.models().map(async (m) => ({
+        id: m.id,
+        cached: m.id === QWEN_MODEL_ID ? await this.worker.qwenCacheStatus() : await this.worker.modelCacheStatus(m.id),
+      })),
+    );
     this.models.update((list) =>
-      list.map((m) =>
-        m.id === QWEN_MODEL_ID && m.state !== 'downloading'
-          ? { ...m, state: cached ? 'ready' : 'not-downloaded', downloadedMb: cached ? m.sizeMb : 0 }
-          : m,
-      ),
+      list.map((m) => {
+        const found = statuses.find((s) => s.id === m.id);
+        if (!found || found.cached === null || m.state === 'downloading' || m.state === 'paused') return m;
+        return { ...m, state: found.cached ? 'ready' : 'not-downloaded', downloadedMb: found.cached ? m.sizeMb : 0 };
+      }),
     );
     this.syncSystemStatus();
   }
 
+  /** Pauses every running download (e.g. when the connection drops). */
+  async pauseDownloads(): Promise<void> {
+    const running = this.models().filter((m) => m.state === 'downloading' && m.id !== QWEN_MODEL_ID);
+    await Promise.all(running.map((m) => this.worker.cancelModelDownload(m.id)));
+  }
+
   async downloadModel(id: string): Promise<void> {
     const target = this.models().find((m) => m.id === id);
-    if (!target || target.state !== 'not-downloaded') return;
+    if (!target || (target.state !== 'not-downloaded' && target.state !== 'paused')) return;
+    const resuming = target.state === 'paused';
 
     if (this.cachedMb() + target.sizeMb > this.budgetMb()) {
       this.pushToast(
@@ -125,27 +140,50 @@ export class ModelRegistryStore {
       return;
     }
 
-    const realDownload = id === QWEN_MODEL_ID && this.worker.workerSupported;
+    const realDownload = this.worker.workerSupported;
     this.models.update((list) =>
       list.map((m) =>
         m.id === id
-          ? { ...m, state: 'downloading', downloadedMb: realDownload ? 0 : Math.round(m.sizeMb * 0.44) }
+          ? { ...m, state: 'downloading', downloadedMb: realDownload ? (resuming ? m.downloadedMb : 0) : Math.round(m.sizeMb * 0.44) }
           : m,
       ),
     );
-    this.pushToast('info', `Downloading ${target.title}`, `Fetching ${target.repoId} into local Cache Storage.`);
+    this.syncPaused();
+    this.pushToast(
+      'info',
+      `${resuming ? 'Resuming' : 'Downloading'} ${target.title}`,
+      `Fetching ${target.repoId} into local Cache Storage.`,
+    );
 
     if (realDownload) {
-      const result = await this.worker.downloadQwen(this.prefs.preferences().preferredBackend, (progress) => {
-        const downloadedMb = Math.min(target.sizeMb, Math.round(progress.loadedBytes / 1_000_000));
+      const onProgress = (progress: { loadedBytes: number; totalBytes: number }): void => {
+        // Real bytes drive the bar; the label scales them onto the model's advertised size.
+        const fraction = progress.totalBytes > 0 ? progress.loadedBytes / progress.totalBytes : 0;
+        const downloadedMb = Math.min(target.sizeMb, Math.round(fraction * target.sizeMb));
         this.models.update((list) =>
           list.map((m) => (m.id === id && m.state === 'downloading' ? { ...m, downloadedMb } : m)),
         );
-      });
+      };
+      const result =
+        id === QWEN_MODEL_ID
+          ? await this.worker.downloadQwen(this.prefs.preferences().preferredBackend, onProgress)
+          : await this.worker.downloadModel(id, onProgress);
+      const paused = !result.ok && (('paused' in result && result.paused === true) || (typeof navigator !== 'undefined' && !navigator.onLine));
+      if (paused) {
+        this.models.update((list) => list.map((m) => (m.id === id ? { ...m, state: 'paused' } : m)));
+        this.syncPaused();
+        this.pushToast(
+          'warning',
+          `${target.title} download paused`,
+          'The connection was lost. Resume from AI Lab once you are back online; finished files are kept.',
+        );
+        return;
+      }
       if (!result.ok) {
         this.models.update((list) =>
           list.map((m) => (m.id === id ? { ...m, state: 'not-downloaded', downloadedMb: 0 } : m)),
         );
+        this.syncPaused();
         this.pushToast(
           'danger',
           `${target.title} download failed`,
@@ -160,6 +198,7 @@ export class ModelRegistryStore {
     this.models.update((list) =>
       list.map((m) => (m.id === id ? { ...m, state: 'ready', downloadedMb: m.sizeMb } : m)),
     );
+    this.syncPaused();
     this.syncSystemStatus();
     this.pushToast('success', `${target.title} ready on-device`, `${target.sizeMb} MB cached locally.`);
   }
@@ -168,8 +207,8 @@ export class ModelRegistryStore {
     const target = this.models().find((m) => m.id === id);
     if (!target) return;
 
-    if (id === QWEN_MODEL_ID && this.worker.workerSupported) {
-      const result = await this.worker.removeQwen();
+    if (this.worker.workerSupported) {
+      const result = id === QWEN_MODEL_ID ? await this.worker.removeQwen() : await this.worker.removeModelFiles(id);
       if (!result.ok) {
         this.pushToast(
           'danger',
@@ -196,6 +235,10 @@ export class ModelRegistryStore {
   private pushToast(severity: ModelToast['severity'], title: string, message: string): void {
     const toast: ModelToast = { id: `mt-${Date.now()}-${Math.random()}`, severity, title, message };
     this.toasts.update((list) => [...list.slice(-2), toast]);
+  }
+
+  private syncPaused(): void {
+    this.systemStatus.pausedDownloadCount.set(this.models().filter((m) => m.state === 'paused').length);
   }
 
   private syncSystemStatus(): void {
