@@ -7,6 +7,7 @@ import {
   QwenPreferredBackend,
   createQwenEngine,
 } from './qwen-engine';
+import { PoseKeypoint, VitPoseDevice, VitPoseLibrary, VitPosePreferredBackend, createVitPoseEngine } from './vitpose-engine';
 
 interface WebGpuLike {
   requestAdapter(): Promise<{ readonly features: { has(feature: string): boolean } } | null>;
@@ -15,6 +16,8 @@ interface WebGpuLike {
 export type WorkerRequest =
   | { id: string; type: 'pose-step'; currentReps: number; targetReps: number; backend: string }
   | { id: string; type: 'semantic-search'; query: string; corpus: readonly { reference: string; text: string; themes: readonly string[] }[] }
+  | { id: string; type: 'pose-frame'; bitmap: ImageBitmap; preferredBackend?: VitPosePreferredBackend }
+  | { id: string; type: 'pose-dispose' }
   | { id: string; type: 'qwen-generate'; prompt: string; preferredBackend?: QwenPreferredBackend; stream?: boolean }
   | { id: string; type: 'qwen-status' }
   | { id: string; type: 'qwen-download'; preferredBackend?: QwenPreferredBackend }
@@ -23,6 +26,15 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | { id: string; type: 'pose-step'; completedReps: number; formScorePercent: number; cue: string; backend: string }
+  | {
+      id: string;
+      type: 'pose-frame';
+      keypoints: readonly PoseKeypoint[] | null;
+      device: VitPoseDevice | null;
+      inferenceMs: number;
+      reason?: string;
+    }
+  | { id: string; type: 'pose-dispose' }
   | { id: string; type: 'semantic-search'; results: readonly { reference: string; text: string; score: number }[] }
   | {
       id: string;
@@ -70,8 +82,45 @@ const qwen = createQwenEngine({
   },
 });
 
+const vitpose = createVitPoseEngine({
+  loadLibrary: async () => (await import('@huggingface/transformers')) as unknown as VitPoseLibrary,
+  detectWebGpu: async () => {
+    const gpu = (navigator as unknown as { gpu?: WebGpuLike }).gpu;
+    return (await gpu?.requestAdapter()) != null;
+  },
+});
+
 addEventListener('message', ({ data }: MessageEvent<WorkerRequest>) => {
   switch (data.type) {
+    case 'pose-frame': {
+      const { bitmap } = data;
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        bitmap.close();
+        const res: WorkerResponse = { id: data.id, type: 'pose-frame', keypoints: null, device: null, inferenceMs: 0, reason: 'No 2D canvas context in the worker.' };
+        postMessage(res);
+        break;
+      }
+      ctx.drawImage(bitmap, 0, 0);
+      const { width, height } = bitmap;
+      bitmap.close();
+      const pixels = ctx.getImageData(0, 0, width, height).data;
+      void vitpose.detect({ data: pixels, width, height }, data.preferredBackend ?? 'AutoWebGpu').then((result) => {
+        const res: WorkerResponse = { id: data.id, type: 'pose-frame', ...result };
+        postMessage(res);
+      });
+      break;
+    }
+
+    case 'pose-dispose': {
+      void vitpose.dispose().then(() => {
+        const res: WorkerResponse = { id: data.id, type: 'pose-dispose' };
+        postMessage(res);
+      });
+      break;
+    }
+
     case 'pose-step': {
       const nextReps = Math.min(data.targetReps, data.currentReps + 1);
       const score = Math.min(99, Math.max(88, 93 + (nextReps % 6)));
