@@ -95,21 +95,17 @@ export class ScriptureService {
     }));
 
     const workerResults = await this.worker.semanticSearch(query, payload);
-    const out: VerseSearchResult[] = [];
-    for (const hit of workerResults) {
-      const source = KJV_CORPUS.find((v) => v.reference === hit.reference);
-      const fallbackText =
-        languageCode !== 'en' && source?.translations[languageCode]
-          ? source.translations[languageCode]
-          : hit.text;
-      const text = await this.chromeAi.translateText(hit.text, languageCode, fallbackText);
-      const langTag = languageCode !== 'en' && text !== hit.text ? languageCode.toUpperCase() : 'KJV';
-      out.push({
-        reference: `${hit.reference} · ${langTag}`,
-        text,
-        score: hit.score,
-      });
-    }
-    return out;
+    return Promise.all(
+      workerResults.map(async (hit): Promise<VerseSearchResult> => {
+        const source = KJV_CORPUS.find((v) => v.reference === hit.reference);
+        const fallbackText =
+          languageCode !== 'en' && source?.translations[languageCode]
+            ? source.translations[languageCode]
+            : hit.text;
+        const text = await this.chromeAi.translateText(hit.text, languageCode, fallbackText);
+        const langTag = languageCode !== 'en' && text !== hit.text ? languageCode.toUpperCase() : 'KJV';
+        return { reference: `${hit.reference} · ${langTag}`, text, score: hit.score };
+      }),
+    );
   }
 }
