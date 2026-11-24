@@ -39,7 +39,9 @@ export function parseBleRunningCadence(data: DataView): number {
 
 export type SensorKind = 'heart-rate' | 'running';
 
-export type BleErrorCode = 'unsupported' | 'cancelled' | 'connect-failed' | 'service-missing';
+export type BleErrorCode = 'unsupported' | 'cancelled' | 'connect-failed' | 'service-missing' | 'timeout';
+
+export type AdapterStatus = 'available' | 'off' | 'unsupported';
 
 export class BleError extends Error {
   constructor(
@@ -110,6 +112,14 @@ const PRIMARY_SERVICE: Record<SensorKind, string> = {
 export class WebBluetoothAdapter {
   private nav(): BluetoothNavigator | undefined {
     return typeof navigator !== 'undefined' ? (navigator as unknown as BluetoothNavigator) : undefined;
+  }
+
+  /** `unsupported` = no Web Bluetooth API in this browser; `off` = the API exists but the radio is unavailable. */
+  async status(): Promise<AdapterStatus> {
+    if (!this.nav()?.bluetooth) {
+      return 'unsupported';
+    }
+    return (await this.isAdapterAvailable()) ? 'available' : 'off';
   }
 
   async isAdapterAvailable(): Promise<boolean> {

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Devices: loading skeleton, `No devices linked yet` empty state (with Forget), `Bluetooth adapter is turned off` error with working `Check again`, `Pairing timed out` state with proximity guidance and retry, automatic low-battery (`<= 15%`) warning toast, and a `Reconnect` action on disconnect toasts (#12).
 - Devices: pairing now calls `navigator.bluetooth.requestDevice()` from the click, connects GATT and streams Heart Rate (`0x2A37`), Running Speed & Cadence (`0x2A53`) and Battery (`0x2A19`) notifications into `TelemetryStore` locally; paired-device labels persist in IndexedDB (devices restore as Disconnected after a reload), reconnect reuses the live GATT link, and an unexpected `gattserverdisconnected` marks the device Disconnected (#11).
 - Train: live heart rate, Zones 1–5 and cadence from `TelemetryStore` bind into the camera HUD and KPI cards; a sensor dropping mid-workout clears only its own readings without interrupting rep counting or saving, and saved sessions record the true session average (`0`/dash when no sensor) (#9).
 - Train: model warm-up `loading` skeleton, idle `Ready to train on-device` empty state, progression through all four movements (Goblet squats, Incline push-ups, Split squats, Forearm plank hold) across three sets with a live `Up next`, and `QuotaExceededError` handling in `Finish workout?` that shows `Could not save session` with an AI Lab link and keeps the reflection note for retry (#8).

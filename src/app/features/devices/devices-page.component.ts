@@ -21,6 +21,60 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
   template: `
+    @if (!store.loaded()) {
+      <div class="stack" role="status" aria-busy="true" aria-label="Loading devices" data-testid="devices-loading">
+        <span class="skeleton skeleton--text" style="width:70%;"></span>
+        <div class="model-list">
+          @for (n of [1, 2]; track n) {
+            <div class="model-row">
+              <div class="stack stack--sm">
+                <span class="skeleton skeleton--text" style="width:45%;"></span>
+                <span class="skeleton skeleton--text" style="width:65%;"></span>
+              </div>
+              <span class="skeleton skeleton--text" style="width:4rem;"></span>
+              <span class="skeleton skeleton--text" style="width:4rem;"></span>
+              <span class="skeleton" style="width:6rem;height:2rem;border-radius:var(--radius-full);margin-left:auto;"></span>
+            </div>
+          }
+        </div>
+      </div>
+    } @else if (store.adapterStatus() === 'off') {
+      <div class="alert alert--danger" role="alert" data-testid="devices-adapter-off">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+        <div class="alert__body">
+          <div class="alert__title">Bluetooth adapter is turned off</div>
+          <p class="text-sm">Turn on Bluetooth in your system settings so Chrome can reconnect to your sensors.</p>
+          <div class="alert__actions">
+            <button type="button" class="toast__action" (click)="store.checkAdapter()" data-testid="devices-check-again">Check again</button>
+          </div>
+        </div>
+      </div>
+    } @else if (store.adapterStatus() === 'unsupported') {
+      <div class="alert alert--danger" role="alert" data-testid="devices-unsupported">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+        <div class="alert__body">
+          <div class="alert__title">Web Bluetooth is not available</div>
+          <p class="text-sm">Use Chrome or Edge on desktop or Android to pair a heart-rate strap or running watch. Haloop still works without sensors.</p>
+        </div>
+      </div>
+    } @else if (store.devices().length === 0) {
+      <div class="empty" data-testid="devices-empty">
+        <div class="empty__icon" aria-hidden="true">
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17" /></svg>
+        </div>
+        <h2 class="empty__title">No devices linked yet</h2>
+        <p class="empty__text">
+          Pair a Bluetooth heart-rate strap or watch to stream live zones during Train sessions. Haloop also works without
+          sensors.
+        </p>
+        <div class="empty__actions">
+          <button type="button" class="btn btn--primary btn--pill" (click)="openPairDialog()" data-testid="devices-empty-pair">
+            <svg class="icon icon--sm" aria-hidden="true" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            Pair Bluetooth device
+          </button>
+        </div>
+      </div>
+    } @else {
     <div class="cluster cluster--between">
       <p class="text-soft" style="font-size:var(--font-size-lg); max-width:44rem;">
         Haloop connects directly to heart-rate straps and running watches via Web Bluetooth—no companion phone app or
@@ -60,6 +114,15 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
             <div class="model-row__action">
               <button
                 type="button"
+                class="btn btn--sm btn--ghost"
+                (click)="store.forgetDevice(device.id)"
+                [attr.aria-label]="'Forget ' + device.label"
+                [attr.data-testid]="'device-forget-' + device.id"
+              >
+                Forget
+              </button>
+              <button
+                type="button"
                 class="btn btn--sm btn--pill"
                 (click)="store.toggleConnection(device.id)"
                 [disabled]="store.pairingBusy()"
@@ -72,6 +135,7 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
         }
       </div>
     </section>
+    }
 
     @if (pairDialogOpen()) {
       <div class="backdrop" (click)="closePairDialog()"></div>
@@ -106,6 +170,15 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
           </div>
 
           <div class="dialog__body stack">
+            @if (store.pairOutcome() === 'timeout') {
+              <div class="alert alert--danger" role="alert" data-testid="pair-device-timeout">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                <div class="alert__body">
+                  <div class="alert__title">Pairing timed out</div>
+                  <p class="text-sm">Make sure the sensor is awake and within 2 meters, then try again.</p>
+                </div>
+              </div>
+            }
             <fieldset class="stack stack--sm">
               <legend>Sensor type</legend>
               @for (sensor of sensorChoices; track sensor.id) {
@@ -151,7 +224,7 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
               [disabled]="store.pairingBusy()"
               data-testid="pair-device-submit"
             >
-              {{ store.pairingBusy() ? 'Pairing…' : 'Pair sensor' }}
+              {{ store.pairingBusy() ? 'Pairing…' : store.pairOutcome() === 'timeout' ? 'Try again' : 'Pair sensor' }}
             </button>
           </div>
         </div>
@@ -184,6 +257,11 @@ const SENSOR_CHOICES: readonly SensorChoice[] = [
           <div class="toast__body">
             <div class="toast__title">{{ t.title }}</div>
             <div class="toast__text">{{ t.message }}</div>
+            @if (t.action; as action) {
+              <button type="button" class="toast__action" (click)="runToastAction(action.deviceId)" data-testid="device-toast-action">
+                {{ action.label }}
+              </button>
+            }
           </div>
           <button
             type="button"
@@ -211,7 +289,17 @@ export class DevicesPageComponent {
     () => this.store.devices().filter((d) => d.connected).length,
   );
 
+  constructor() {
+    void this.store.checkAdapter();
+  }
+
+  protected async runToastAction(deviceId: string): Promise<void> {
+    this.store.dismissToast();
+    await this.store.toggleConnection(deviceId);
+  }
+
   protected openPairDialog(): void {
+    this.store.pairOutcome.set(null);
     this.labelError.set(null);
     this.selectedSensorId.set(SENSOR_CHOICES[0].id);
     this.deviceLabel.set('');
@@ -230,7 +318,8 @@ export class DevicesPageComponent {
     const sensor = SENSOR_CHOICES.find((s) => s.id === this.selectedSensorId()) ?? SENSOR_CHOICES[0];
     const err = await this.store.pairSensor(sensor.kind, this.deviceLabel(), sensor.role);
     this.labelError.set(err);
-    if (!err) {
+    // Stay open after a cancel, timeout or failure so the user can retry without re-entering the label.
+    if (!err && this.store.pairOutcome() === 'connected') {
       this.pairDialogOpen.set(false);
     }
   }
